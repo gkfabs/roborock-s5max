@@ -1,0 +1,6 @@
+/**:
+  ros__parameters:
+    # Calibrate this value with a recorded in-place rotation.
+    scan_time_offset: 0.0
+    # SangamIO removes the known S5 Max enclosure returns.
+    scan_mask_deg: ""

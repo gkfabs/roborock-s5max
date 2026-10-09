@@ -1,0 +1,58 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: nav2_rviz_plugins/Navigation 2
+    Name: Navigation 2
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Enabled: true
+      Name: Grid
+    - Class: rviz_default_plugins/RobotModel
+      Description Source: Topic
+      Description Topic:
+        Value: /robot_description
+      Enabled: true
+      Name: Robot Model
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Name: TF
+    - Class: rviz_default_plugins/LaserScan
+      Enabled: true
+      Name: LiDAR
+      Topic:
+        Reliability Policy: Best Effort
+        Value: /scan
+    - Class: rviz_default_plugins/Map
+      Enabled: true
+      Name: Map
+      Topic:
+        Durability Policy: Transient Local
+        Value: /map
+    - Class: rviz_default_plugins/Path
+      Enabled: true
+      Name: Global plan
+      Topic:
+        Value: /plan
+    - Class: rviz_default_plugins/Path
+      Enabled: true
+      Name: Local plan
+      Topic:
+        Value: /local_plan
+  Enabled: true
+  Global Options:
+    Background Color: 30; 30; 30
+    Fixed Frame: map
+    Frame Rate: 30
+  Name: root
+Tools:
+  - Class: rviz_default_plugins/Interact
+  - Class: rviz_default_plugins/MoveCamera
+  - Class: rviz_default_plugins/Select
+  - Class: rviz_default_plugins/SetInitialPose
+  - Class: nav2_rviz_plugins/GoalTool
+Views:
+  Current:
+    Class: rviz_default_plugins/TopDownOrtho
+    Scale: 50

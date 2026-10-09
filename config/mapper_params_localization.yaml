@@ -1,0 +1,3 @@
+# SLAM Toolbox localization values are added after the mapping test.
+slam_toolbox:
+  ros__parameters: {}

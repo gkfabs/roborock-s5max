@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- Gazebo plugins are added after the physical model passes RViz tests. -->
+</robot>
