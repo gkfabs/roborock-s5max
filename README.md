@@ -16,7 +16,7 @@ source install/setup.bash
 Inspect the model with:
 
 ```bash
-ros2 launch roborock_s5max monitor_robot.launch.py physical:=false
+ros2 launch roborock_s5max inspect_model.launch.py
 ```
 
 Start physical bring-up with:
@@ -27,8 +27,41 @@ ros2 launch roborock_s5max bringup.launch.py robot_ip:=192.168.4.55
 
 The physical launch expects SangamIO on TCP port `5555`. It does not perform the bounded robot takeover.
 
+## Local demonstration commands
+
+The repository Makefile combines the robot takeover, ROS build, RViz model, bridge, and joystick tools.
+The bridge repository defaults to the sibling directory `../vacuum_ros2_bridge-review`.
+Set `BRIDGE_REPO` if the bridge is at a different path.
+
+Inspect the model without a robot:
+
+```bash
+make model
+```
+
+Start SangamIO on the robot:
+
+```bash
+make sangamio
+```
+
+Start SangamIO, the ROS bridge, and joystick control:
+
+```bash
+make demo
+```
+
+Restore the stock robot software and Valetudo:
+
+```bash
+make valetudo
+```
+
+Use `ROBOT_IP`, `ROS_IMAGE`, `BRIDGE_REPO`, and `DEMO_SECONDS` to change the local environment.
+The bounded takeover programs are in `scripts/`.
+
 ## Current limits
 
 The wheel, caster, and LiDAR positions are temporary. Calibrate them before navigation tests.
 
-Navigation, SLAM Toolbox, Gazebo, cleaning, mopping, docking, and the operator Makefile remain later milestones.
+Navigation, SLAM Toolbox, Gazebo, cleaning, mopping, and docking remain later milestones.
