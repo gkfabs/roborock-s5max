@@ -17,7 +17,7 @@
   <xacro:property name="wheel_separation" value="0.229"/>
   <xacro:property name="caster_x" value="0.125"/>
   <xacro:property name="caster_diameter" value="0.025"/>
-  <xacro:property name="lidar_x" value="-0.060"/>
+  <xacro:property name="lidar_x" value="0.060"/>
   <xacro:property name="lidar_y" value="0.000"/>
   <xacro:property name="lidar_diameter" value="0.075"/>
   <xacro:property name="lidar_height" value="0.0165"/>

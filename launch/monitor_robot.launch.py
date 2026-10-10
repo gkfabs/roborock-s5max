@@ -2,8 +2,15 @@
 
 from ament_index_python.packages import get_package_share_path
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import (
+    DeclareLaunchArgument,
+    EmitEvent,
+    IncludeLaunchDescription,
+    RegisterEventHandler,
+)
 from launch.conditions import IfCondition, UnlessCondition
+from launch.event_handlers import OnProcessExit
+from launch.events import Shutdown
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import Command, LaunchConfiguration
 from launch_ros.actions import Node
@@ -63,6 +70,13 @@ def generate_launch_description():
         arguments=['-d', str(rviz_path)],
     )
 
+    stop_when_rviz_closes = RegisterEventHandler(
+        OnProcessExit(
+            target_action=rviz,
+            on_exit=[EmitEvent(event=Shutdown(reason='RViz closed'))],
+        )
+    )
+
     return LaunchDescription([
         DeclareLaunchArgument(
             'physical',
@@ -90,4 +104,5 @@ def generate_launch_description():
         model_only_state_publisher,
         model_only_joint_publisher,
         rviz,
+        stop_when_rviz_closes,
     ])

@@ -39,6 +39,16 @@ Inspect the model without a robot:
 make model
 ```
 
+Monitor the physical robot in RViz without wheel commands:
+
+```bash
+make rviz
+```
+
+Physically undock the robot before you start this command.
+The S5 Max driver does not start the LiDAR while the robot is docked.
+Close RViz to stop the LiDAR and restore Valetudo.
+
 Start SangamIO on the robot:
 
 ```bash

@@ -9,13 +9,14 @@ BRIDGE_REPO ?= $(CURDIR)/../vacuum_ros2_bridge-review
 ROBOT_DESCRIPTION_REPO ?= $(CURDIR)
 DEMO_SECONDS ?= 1800
 
-.PHONY: help valetudo sangamio demo model ros-build
+.PHONY: help valetudo sangamio demo model rviz ros-build
 
 help:
 	@echo "make valetudo  - stop the demo and restore the stock robot software"
 	@echo "make sangamio  - take over the robot and start SangamIO"
 	@echo "make demo      - start SangamIO, the ROS bridge, and joystick control"
 	@echo "make model     - inspect the S5 Max model in RViz without the robot"
+	@echo "make rviz      - monitor the physical robot in RViz without movement"
 
 valetudo:
 	@docker stop --timeout 3 s5max-joystick-demo >/dev/null 2>&1 || true
@@ -50,6 +51,13 @@ model: ros-build
 		-v "$(ROS_WORKSPACE)/log:/ws/log" \
 		-w /ws "$(ROS_IMAGE)" bash -lc \
 		'source /opt/ros/jazzy/setup.bash && source /ws/install/setup.bash && ros2 launch roborock_s5max inspect_model.launch.py'
+
+rviz: ros-build
+	@ROBOT="$(ROBOT)" ROBOT_IP="$(ROBOT_IP)" ROS_IMAGE="$(ROS_IMAGE)" \
+		ROS_WORKSPACE="$(ROS_WORKSPACE)" BRIDGE_REPO="$(BRIDGE_REPO)" \
+		ROBOT_DESCRIPTION_REPO="$(ROBOT_DESCRIPTION_REPO)" \
+		DEMO_SECONDS="$(DEMO_SECONDS)" \
+		./scripts/run-rviz-monitor.sh
 
 demo: ros-build
 	@ROBOT="$(ROBOT)" ROBOT_IP="$(ROBOT_IP)" ROS_IMAGE="$(ROS_IMAGE)" \
