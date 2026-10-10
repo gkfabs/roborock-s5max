@@ -20,10 +20,11 @@ Visualization Manager:
       Name: Robot Model
     - Class: rviz_default_plugins/TF
       Enabled: true
+      Marker Scale: 0.15
       Name: TF
-      Show Arrows: true
+      Show Arrows: false
       Show Axes: true
-      Show Names: true
+      Show Names: false
     - Class: rviz_default_plugins/LaserScan
       Enabled: true
       Name: LiDAR
@@ -34,7 +35,15 @@ Visualization Manager:
         Value: /scan
     - Class: rviz_default_plugins/Odometry
       Enabled: true
+      Keep: 100
       Name: Wheel odometry
+      Shape:
+        Color: 255; 25; 0
+        Head Length: 0.05
+        Head Radius: 0.02
+        Shaft Length: 0.15
+        Shaft Radius: 0.01
+        Value: Arrow
       Topic:
         Value: /odom
   Enabled: true

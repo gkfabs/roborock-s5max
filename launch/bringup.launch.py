@@ -61,6 +61,15 @@ def generate_launch_description():
         }],
     )
 
+    velocity_mux = Node(
+        package='twist_mux',
+        executable='twist_mux',
+        name='twist_mux',
+        output='screen',
+        parameters=[str(package_path / 'config' / 'twist_mux.yaml')],
+        remappings=[('/cmd_vel_out', '/cmd_vel')],
+    )
+
     return LaunchDescription([
         DeclareLaunchArgument(
             'robot_ip',
@@ -79,6 +88,7 @@ def generate_launch_description():
             description='Use the simulation clock.',
         ),
         bridge,
+        velocity_mux,
         state_publisher,
         joint_publisher,
     ])

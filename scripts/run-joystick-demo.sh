@@ -6,6 +6,7 @@ ROBOT_IP="${ROBOT_IP:-192.168.4.55}"
 ROS_IMAGE="${ROS_IMAGE:-oomwoo_one:latest}"
 ROS_WORKSPACE="${ROS_WORKSPACE:-/tmp/s5_ros_ws}"
 BRIDGE_REPO="${BRIDGE_REPO:?BRIDGE_REPO is required}"
+ROBOT_DESCRIPTION_REPO="${ROBOT_DESCRIPTION_REPO:?ROBOT_DESCRIPTION_REPO is required}"
 DEMO_SECONDS="${DEMO_SECONDS:-1800}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTAINER=s5max-joystick-demo
@@ -64,9 +65,16 @@ restore_valetudo()
 }
 
 find_joystick
+echo "Joystick found: $JOY_EVENT and $JOY_JS"
+echo "The robot must be physically undocked on a clear, level floor."
+read -r -p "Type 'floor-clear' to continue: " confirmation
+if [ "$confirmation" != "floor-clear" ]; then
+    echo "The demonstration was canceled."
+    exit 1
+fi
+
 trap restore_valetudo EXIT INT TERM
 
-echo "Joystick found: $JOY_EVENT and $JOY_JS"
 ROBOT="$ROBOT" DEMO_SECONDS="$DEMO_SECONDS" \
     "$SCRIPT_DIR/robot-mode.sh" sangamio
 
@@ -77,17 +85,35 @@ echo "  Axis 0: left and right, up to 1.20 rad/s"
 echo "  Button 0: toggle vacuum fan at 38%"
 echo "  Button 1: toggle main brush at 71%"
 echo "  Button 2: toggle side brush at 30%"
-echo "Release button 3 to stop movement. Press Ctrl-C to restore Valetudo."
+echo "Release button 3 to stop movement."
+echo "Close RViz or press Ctrl-C to stop all actuators and restore Valetudo."
+
+JOY_EVENT_GID="$(stat -Lc %g "$JOY_EVENT")"
+JOY_JS_GID="$(stat -Lc %g "$JOY_JS")"
+JOY_EVENT_REAL="$(readlink -f "$JOY_EVENT")"
+JOY_JS_REAL="$(readlink -f "$JOY_JS")"
+GROUP_ARGS=(--group-add "$JOY_EVENT_GID")
+if [ "$JOY_JS_GID" != "$JOY_EVENT_GID" ]; then
+    GROUP_ARGS+=(--group-add "$JOY_JS_GID")
+fi
 
 docker run --rm --name "$CONTAINER" --network host \
-    --device "$JOY_EVENT:/dev/input/event0" \
-    --device "$JOY_JS:/dev/input/js0" \
+    --user "$(id -u):$(id -g)" \
+    "${GROUP_ARGS[@]}" \
+    --device "$JOY_EVENT_REAL:$JOY_EVENT_REAL" \
+    --device "$JOY_JS_REAL:$JOY_JS_REAL" \
+    -e DISPLAY="${DISPLAY:-}" \
+    -e HOME=/tmp \
+    -e QT_X11_NO_MITSHM=1 \
+    -e LIBGL_ALWAYS_SOFTWARE=1 \
+    -e ROBOT_IP="$ROBOT_IP" \
     -v /run/udev:/run/udev:ro \
+    -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
     -v "$BRIDGE_REPO:/ws/src/vacuum_ros2_bridge:ro" \
+    -v "$ROBOT_DESCRIPTION_REPO:/ws/src/roborock_s5max:ro" \
     -v "$ROS_WORKSPACE/build:/ws/build" \
-    -v "$ROS_WORKSPACE/install:/ws/install" \
+    -v "$ROS_WORKSPACE/install:/ws/install:ro" \
     -v "$ROS_WORKSPACE/log:/ws/log" \
     -v "$SCRIPT_DIR/joystick_pilot.py:/tmp/joystick_pilot.py:ro" \
     -v "$SCRIPT_DIR/run-ros-joystick.sh:/tmp/run-ros-joystick.sh:ro" \
-    -e ROBOT_IP="$ROBOT_IP" \
     -w /ws "$ROS_IMAGE" bash /tmp/run-ros-joystick.sh

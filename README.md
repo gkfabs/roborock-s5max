@@ -55,11 +55,28 @@ Start SangamIO on the robot:
 make sangamio
 ```
 
-Start SangamIO, the ROS bridge, and joystick control:
+Start SangamIO, RViz, LiDAR, the ROS bridge, and joystick control:
 
 ```bash
 make demo
 ```
+
+Physically undock the robot and put it on a clear, level floor.
+Hold joystick button 3 to enable movement and actuator changes.
+Use the analog sticks to control linear and angular speed.
+Use buttons 0, 1, and 2 to toggle the vacuum, main brush, and side brush.
+Release button 3 to stop wheel movement.
+Close RViz to stop all actuators and restore Valetudo.
+
+Stop wheel movement and all cleaning actuators without a reboot:
+
+```bash
+make stop
+```
+
+The joystick publishes on `/cmd_vel_manual` while its deadman is active.
+Future Nav2 commands use `/cmd_vel_nav`.
+`twist_mux` gives manual control priority and publishes the selected command on `/cmd_vel`.
 
 Restore the stock robot software and Valetudo:
 

@@ -24,7 +24,7 @@ class JoystickPilot(Node):
 
     def __init__(self):
         super().__init__("s5max_joystick_pilot")
-        self.drive = self.create_publisher(Twist, "/cmd_vel", 10)
+        self.drive = self.create_publisher(Twist, "/cmd_vel_manual", 10)
         self.actuator = self.create_publisher(
             ActuatorCommand, "/actuator_cmd", 10
         )
@@ -36,6 +36,7 @@ class JoystickPilot(Node):
         self.buttons = None
         self.last_joy = 0.0
         self.last_drive_log = 0.0
+        self.drive_active = False
         self.actuator_state = {name: False for name, _ in self.TOGGLES.values()}
         self.get_logger().info(
             "Hold button 3 to drive or toggle motors. "
@@ -86,17 +87,23 @@ class JoystickPilot(Node):
         self.buttons = current
 
     def refresh_drive(self):
-        if self.buttons is None or time.monotonic() - self.last_joy > 0.25:
-            self.publish_drive()
-            return
-        if self.buttons[self.ENABLE_BUTTON] == 0:
-            self.publish_drive()
+        stale = time.monotonic() - self.last_joy > 0.25
+        enabled = (
+            self.buttons is not None
+            and len(self.buttons) > self.ENABLE_BUTTON
+            and self.buttons[self.ENABLE_BUTTON] == 1
+        )
+        if stale or not enabled:
+            if self.drive_active:
+                self.publish_drive()
+                self.drive_active = False
             return
         linear_axis = self.analog_axis(self.axes[1])
         angular_axis = self.analog_axis(self.axes[0])
         linear = linear_axis * self.LINEAR_SCALE
         angular = angular_axis * self.ANGULAR_SCALE
         self.publish_drive(linear, angular)
+        self.drive_active = True
         now = time.monotonic()
         if now - self.last_drive_log >= 0.5:
             self.get_logger().info(
