@@ -12,20 +12,21 @@ DEMO_SECONDS ?= 1800
 MAP_DIR ?= $(HOME)/.local/share/roborock-s5max/maps
 NAME ?=
 
-.PHONY: help valetudo sangamio demo map model rviz stop safety-reset ros-image ros-build
+.PHONY: help valetudo sangamio demo map navigate model rviz stop safety-reset ros-image ros-build
 
 help:
 	@echo "make valetudo  - stop the demo and restore the stock robot software"
 	@echo "make sangamio  - take over the robot and start SangamIO"
 	@echo "make demo      - start RViz and control the physical robot with a joystick"
 	@echo "make map NAME=<name> - create and save a map with SLAM Toolbox"
+	@echo "make navigate NAME=<name> - localize on a saved map and start Nav2"
 	@echo "make model     - inspect the S5 Max model in RViz without the robot"
 	@echo "make rviz      - monitor the physical robot in RViz without movement"
 	@echo "make stop      - stop wheels and cleaning actuators without a reboot"
 	@echo "make safety-reset - release a cleared physical safety stop"
 
 valetudo:
-	@docker stop --timeout 30 s5max-mapping s5max-joystick-demo \
+	@docker stop --timeout 30 s5max-navigation s5max-mapping s5max-joystick-demo \
 		s5max-rviz-monitor >/dev/null 2>&1 || true
 	@ROBOT="$(ROBOT)" ./scripts/robot-mode.sh valetudo
 
@@ -83,6 +84,13 @@ map: ros-build
 		ROBOT_DESCRIPTION_REPO="$(ROBOT_DESCRIPTION_REPO)" \
 		DEMO_SECONDS="$(DEMO_SECONDS)" MAP_DIR="$(MAP_DIR)" NAME="$(NAME)" \
 		./scripts/run-mapping.sh
+
+navigate: ros-build
+	@ROBOT="$(ROBOT)" ROBOT_IP="$(ROBOT_IP)" ROS_IMAGE="$(ROS_IMAGE)" \
+		ROS_WORKSPACE="$(ROS_WORKSPACE)" BRIDGE_REPO="$(BRIDGE_REPO)" \
+		ROBOT_DESCRIPTION_REPO="$(ROBOT_DESCRIPTION_REPO)" \
+		DEMO_SECONDS="$(DEMO_SECONDS)" MAP_DIR="$(MAP_DIR)" NAME="$(NAME)" \
+		./scripts/run-navigation.sh
 
 stop:
 	@ROS_IMAGE="$(ROS_IMAGE)" ROS_WORKSPACE="$(ROS_WORKSPACE)" \

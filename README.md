@@ -82,6 +82,21 @@ Existing map files are not overwritten.
 Drive slowly and revisit the starting area before you finish the map.
 Close RViz or press `Ctrl-C` to save the map and restore Valetudo.
 
+Localize on a saved map and start Nav2:
+
+```bash
+make navigate NAME=apartment
+```
+
+Physically undock the robot and put it at the map starting position.
+The command loads the saved SLAM pose graph and starts RViz.
+It does not send a movement command during startup.
+Make sure that the LiDAR scan aligns with the map before you set a goal.
+If the pose is wrong, use `2D Pose Estimate` in RViz.
+After localization is correct, use `Nav2 Goal` to select a clear nearby target.
+The joystick remains available as a higher-priority manual override when connected.
+Close RViz or press `Ctrl-C` to stop Nav2 and restore Valetudo.
+
 The first ROS command builds `roborock_s5max_ros:latest` from
 `oomwoo_one:latest`.
 This image adds SLAM Toolbox and Nav2.
@@ -118,4 +133,4 @@ The bounded takeover programs are in `scripts/`.
 
 The wheel, caster, and LiDAR positions are temporary. Calibrate them before navigation tests.
 
-Saved-map navigation, Gazebo, cleaning, mopping, and docking remain later milestones.
+Gazebo, cleaning, mopping, and docking remain later milestones.

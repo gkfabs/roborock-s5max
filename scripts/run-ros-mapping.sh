@@ -191,7 +191,7 @@ ros2 run joy joy_node --ros-args \
 joy_pid=$!
 python3 /tmp/joystick_pilot.py &
 pilot_pid=$!
-rviz2 -d /ws/install/roborock_s5max/share/roborock_s5max/rviz/navigation.rviz &
+rviz2 -d /ws/install/roborock_s5max/share/roborock_s5max/rviz/mapping.rviz &
 rviz_pid=$!
 
 echo "Mapping is ready. Drive slowly and revisit the starting area."
