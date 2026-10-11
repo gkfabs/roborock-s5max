@@ -78,6 +78,14 @@ The joystick publishes on `/cmd_vel_manual` while its deadman is active.
 Future Nav2 commands use `/cmd_vel_nav`.
 `twist_mux` gives manual control priority and publishes the selected command on `/cmd_vel`.
 
+The safety adapter gives bumper, cliff, and stale-odometry stops the highest priority.
+Safety events remain latched after the sensor becomes clear.
+After you remove the hazard, release the safety stop from another terminal:
+
+```bash
+make safety-reset
+```
+
 Restore the stock robot software and Valetudo:
 
 ```bash

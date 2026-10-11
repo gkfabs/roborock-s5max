@@ -70,6 +70,17 @@ def generate_launch_description():
         remappings=[('/cmd_vel_out', '/cmd_vel')],
     )
 
+    safety_adapter = Node(
+        package='roborock_s5max',
+        executable='safety_adapter.py',
+        name='s5max_safety_adapter',
+        output='screen',
+        parameters=[{
+            'odom_timeout_sec': 0.5,
+            'publish_rate_hz': 20.0,
+        }],
+    )
+
     return LaunchDescription([
         DeclareLaunchArgument(
             'robot_ip',
@@ -89,6 +100,7 @@ def generate_launch_description():
         ),
         bridge,
         velocity_mux,
+        safety_adapter,
         state_publisher,
         joint_publisher,
     ])

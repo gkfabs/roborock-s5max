@@ -1,3 +1,111 @@
-# S5 Max Nav2 values are added after the physical footprint measurement.
-/**:
-  ros__parameters: {}
+controller_server:
+  ros__parameters:
+    controller_frequency: 10.0
+    min_x_velocity_threshold: 0.001
+    min_y_velocity_threshold: 0.001
+    min_theta_velocity_threshold: 0.001
+    controller_plugins: ["FollowPath"]
+    FollowPath:
+      plugin: "dwb_core::DWBLocalPlanner"
+      min_vel_x: -0.05
+      max_vel_x: 0.15
+      max_vel_y: 0.0
+      max_vel_theta: 0.6
+      min_speed_xy: 0.0
+      max_speed_xy: 0.15
+      min_speed_theta: 0.0
+      acc_lim_x: 0.15
+      acc_lim_y: 0.0
+      acc_lim_theta: 0.6
+      decel_lim_x: -0.25
+      decel_lim_y: 0.0
+      decel_lim_theta: -1.0
+      vx_samples: 20
+      vy_samples: 0
+      vtheta_samples: 40
+      sim_time: 1.5
+      linear_granularity: 0.02
+      angular_granularity: 0.02
+      transform_tolerance: 0.2
+      critics:
+        - RotateToGoal
+        - Oscillation
+        - BaseObstacle
+        - GoalAlign
+        - PathAlign
+        - PathDist
+        - GoalDist
+
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      global_frame: odom
+      robot_base_frame: base_footprint
+      rolling_window: true
+      width: 3.0
+      height: 3.0
+      resolution: 0.02
+      robot_radius: 0.185
+      plugins: ["obstacle_layer", "inflation_layer"]
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: true
+        observation_sources: scan
+        scan:
+          topic: /scan
+          data_type: "LaserScan"
+          clearing: true
+          marking: true
+          obstacle_max_range: 2.5
+          raytrace_max_range: 3.0
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        inflation_radius: 0.22
+        cost_scaling_factor: 8.0
+
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      global_frame: map
+      robot_base_frame: base_footprint
+      resolution: 0.05
+      robot_radius: 0.185
+      track_unknown_space: true
+      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        map_subscribe_transient_local: true
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: true
+        observation_sources: scan
+        scan:
+          topic: /scan
+          data_type: "LaserScan"
+          clearing: true
+          marking: true
+          obstacle_max_range: 2.5
+          raytrace_max_range: 3.0
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        inflation_radius: 0.22
+        cost_scaling_factor: 8.0
+
+behavior_server:
+  ros__parameters:
+    max_rotational_vel: 0.6
+    min_rotational_vel: 0.1
+    rotational_acc_lim: 0.6
+
+velocity_smoother:
+  ros__parameters:
+    smoothing_frequency: 20.0
+    scale_velocities: false
+    feedback: "OPEN_LOOP"
+    max_velocity: [0.15, 0.0, 0.6]
+    min_velocity: [-0.05, 0.0, -0.6]
+    max_accel: [0.15, 0.0, 0.6]
+    max_decel: [-0.25, 0.0, -1.0]
+    odom_topic: /odom
+    odom_duration: 0.1
+    velocity_timeout: 0.5

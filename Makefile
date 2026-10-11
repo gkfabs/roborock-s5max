@@ -9,7 +9,7 @@ BRIDGE_REPO ?= $(CURDIR)/../vacuum_ros2_bridge-review
 ROBOT_DESCRIPTION_REPO ?= $(CURDIR)
 DEMO_SECONDS ?= 1800
 
-.PHONY: help valetudo sangamio demo model rviz stop ros-build
+.PHONY: help valetudo sangamio demo model rviz stop safety-reset ros-build
 
 help:
 	@echo "make valetudo  - stop the demo and restore the stock robot software"
@@ -18,6 +18,7 @@ help:
 	@echo "make model     - inspect the S5 Max model in RViz without the robot"
 	@echo "make rviz      - monitor the physical robot in RViz without movement"
 	@echo "make stop      - stop wheels and cleaning actuators without a reboot"
+	@echo "make safety-reset - release a cleared physical safety stop"
 
 valetudo:
 	@docker stop --timeout 3 s5max-joystick-demo >/dev/null 2>&1 || true
@@ -72,3 +73,9 @@ stop:
 		BRIDGE_REPO="$(BRIDGE_REPO)" \
 		ROBOT_DESCRIPTION_REPO="$(ROBOT_DESCRIPTION_REPO)" \
 		./scripts/stop-active-session.sh
+
+safety-reset:
+	@ROS_IMAGE="$(ROS_IMAGE)" ROS_WORKSPACE="$(ROS_WORKSPACE)" \
+		BRIDGE_REPO="$(BRIDGE_REPO)" \
+		ROBOT_DESCRIPTION_REPO="$(ROBOT_DESCRIPTION_REPO)" \
+		./scripts/reset-safety.sh
