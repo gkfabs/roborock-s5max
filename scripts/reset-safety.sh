@@ -2,7 +2,7 @@
 set -euo pipefail
 
 container=""
-for candidate in s5max-joystick-demo s5max-rviz-monitor; do
+for candidate in s5max-mapping s5max-joystick-demo s5max-rviz-monitor; do
     if [ "$(docker inspect --format '{{.State.Running}}' "$candidate" 2>/dev/null || true)" = "true" ]; then
         container="$candidate"
         break

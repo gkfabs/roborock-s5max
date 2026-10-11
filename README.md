@@ -68,6 +68,25 @@ Use buttons 0, 1, and 2 to toggle the vacuum, main brush, and side brush.
 Release button 3 to stop wheel movement.
 Close RViz to stop all actuators and restore Valetudo.
 
+Create a map with SLAM Toolbox:
+
+```bash
+make map NAME=apartment
+```
+
+The command stores the occupancy map and SLAM pose graph under
+`$HOME/.local/share/roborock-s5max/maps`.
+The map name can contain letters, numbers, periods, underscores, and hyphens.
+Existing map files are not overwritten.
+
+Drive slowly and revisit the starting area before you finish the map.
+Close RViz or press `Ctrl-C` to save the map and restore Valetudo.
+
+The first ROS command builds `roborock_s5max_ros:latest` from
+`oomwoo_one:latest`.
+This image adds SLAM Toolbox and Nav2.
+Use `ROS_BASE_IMAGE` and `ROS_IMAGE` to select different image names.
+
 Stop wheel movement and all cleaning actuators without a reboot:
 
 ```bash
@@ -92,11 +111,11 @@ Restore the stock robot software and Valetudo:
 make valetudo
 ```
 
-Use `ROBOT_IP`, `ROS_IMAGE`, `BRIDGE_REPO`, and `DEMO_SECONDS` to change the local environment.
+Use `ROBOT_IP`, `ROS_IMAGE`, `BRIDGE_REPO`, `MAP_DIR`, and `DEMO_SECONDS` to change the local environment.
 The bounded takeover programs are in `scripts/`.
 
 ## Current limits
 
 The wheel, caster, and LiDAR positions are temporary. Calibrate them before navigation tests.
 
-Navigation, SLAM Toolbox, Gazebo, cleaning, mopping, and docking remain later milestones.
+Saved-map navigation, Gazebo, cleaning, mopping, and docking remain later milestones.
