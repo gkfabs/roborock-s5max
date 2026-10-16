@@ -62,7 +62,7 @@ def generate_launch_description():
         name='controller_server',
         output='screen',
         parameters=common_parameters,
-        remappings=transform_remappings + [('cmd_vel', 'cmd_vel_nav')],
+        remappings=transform_remappings + [('cmd_vel', 'cmd_vel_nav_raw')],
     )
     smoother = Node(
         package='nav2_smoother',
@@ -86,7 +86,15 @@ def generate_launch_description():
         name='behavior_server',
         output='screen',
         parameters=common_parameters,
-        remappings=transform_remappings + [('cmd_vel', 'cmd_vel_nav')],
+        remappings=transform_remappings + [('cmd_vel', 'cmd_vel_nav_raw')],
+    )
+    collision_monitor = Node(
+        package='nav2_collision_monitor',
+        executable='collision_monitor',
+        name='collision_monitor',
+        output='screen',
+        parameters=common_parameters,
+        remappings=transform_remappings,
     )
     navigator = Node(
         package='nav2_bt_navigator',
@@ -95,6 +103,12 @@ def generate_launch_description():
         output='screen',
         parameters=common_parameters,
         remappings=transform_remappings,
+    )
+    localization_pose_adapter = Node(
+        package='roborock_s5max',
+        executable='localization_pose_adapter.py',
+        name='s5max_localization_pose_adapter',
+        output='screen',
     )
     lifecycle = Node(
         package='nav2_lifecycle_manager',
@@ -109,6 +123,7 @@ def generate_launch_description():
                 'planner_server',
                 'behavior_server',
                 'bt_navigator',
+                'collision_monitor',
             ],
         }],
     )
@@ -141,5 +156,7 @@ def generate_launch_description():
         planner,
         behaviors,
         navigator,
+        localization_pose_adapter,
+        collision_monitor,
         lifecycle,
     ])

@@ -78,7 +78,7 @@ local_costmap:
       width: 3
       height: 3
       resolution: 0.02
-      robot_radius: 0.185
+      robot_radius: 0.19
       plugins: ["obstacle_layer", "inflation_layer"]
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
@@ -95,8 +95,8 @@ local_costmap:
           raytrace_max_range: 3.0
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        inflation_radius: 0.22
-        cost_scaling_factor: 8.0
+        inflation_radius: 0.35
+        cost_scaling_factor: 3.0
       always_send_full_costmap: true
 
 global_costmap:
@@ -107,7 +107,7 @@ global_costmap:
       update_frequency: 1.0
       publish_frequency: 1.0
       resolution: 0.05
-      robot_radius: 0.185
+      robot_radius: 0.19
       track_unknown_space: true
       plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
       static_layer:
@@ -128,8 +128,8 @@ global_costmap:
           raytrace_max_range: 3.0
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        inflation_radius: 0.22
-        cost_scaling_factor: 8.0
+        inflation_radius: 0.35
+        cost_scaling_factor: 3.0
       always_send_full_costmap: true
 
 bt_navigator:
@@ -170,3 +170,38 @@ behavior_server:
     max_rotational_vel: 0.6
     min_rotational_vel: 0.1
     rotational_acc_lim: 0.6
+
+collision_monitor:
+  ros__parameters:
+    base_frame_id: base_footprint
+    odom_frame_id: odom
+    cmd_vel_in_topic: cmd_vel_nav_raw
+    cmd_vel_out_topic: cmd_vel_nav
+    state_topic: collision_monitor_state
+    transform_tolerance: 0.2
+    source_timeout: 0.5
+    base_shift_correction: true
+    stop_pub_timeout: 1.0
+    polygons: ["StopZone", "SlowZone"]
+    StopZone:
+      type: circle
+      radius: 0.24
+      action_type: stop
+      min_points: 3
+      visualize: true
+      polygon_pub_topic: collision_stop_zone
+      enabled: true
+    SlowZone:
+      type: circle
+      radius: 0.38
+      action_type: slowdown
+      min_points: 3
+      slowdown_ratio: 0.35
+      visualize: true
+      polygon_pub_topic: collision_slow_zone
+      enabled: true
+    observation_sources: ["scan"]
+    scan:
+      type: scan
+      topic: /scan
+      enabled: true

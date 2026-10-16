@@ -137,7 +137,8 @@ stop_on_signal()
 trap cleanup EXIT
 trap stop_on_signal INT TERM
 
-ros2 launch roborock_s5max mapping.launch.py robot_ip:="$ROBOT_IP" &
+ros2 launch roborock_s5max mapping.launch.py \
+    robot_ip:="$ROBOT_IP" &
 launch_pid=$!
 
 for _ in $(seq 1 30); do
@@ -157,6 +158,7 @@ if ! ros2 service type /set_lidar 2>/dev/null | \
     exit 1
 fi
 
+lidar_status=0
 lidar_response="$(
     timeout 8 ros2 service call /set_lidar vacuum_ros2_bridge/srv/SetLidar \
         '{enable: true}' 2>&1

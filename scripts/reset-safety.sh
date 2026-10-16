@@ -10,7 +10,7 @@ for candidate in s5max-navigation s5max-mapping s5max-joystick-demo s5max-rviz-m
 done
 
 if [ -z "$container" ]; then
-    echo "ERROR: No active S5 Max ROS session exists. Run make demo or make rviz first." >&2
+    echo "ERROR: No active S5 Max ROS session exists. Run make teleop or make rviz first." >&2
     exit 1
 fi
 

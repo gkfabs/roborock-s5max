@@ -1,0 +1,29 @@
+coverage_planner:
+  ros__parameters:
+    use_sim_time: false
+    cleaning_radius: 0.16
+    robot_radius: 0.18
+    row_overlap: 0.10
+    row_substep_m: 0.30
+    long_axis_sweep: true
+    coverage_target: 0.90
+    stop_at_target: false
+    executor: reactive
+    v_cruise: 0.10
+    k_heading: 1.6
+    rotate_speed: 0.45
+    align_tol: 0.35
+    reach_tol: 0.10
+    min_transit_len: 0.70
+    no_progress_sec: 6.0
+    goal_timeout_sec: 30.0
+    max_retries: 2
+    max_gapfill: 0
+    contact_aware_escape: false
+    max_escapes: 0
+
+s5max_cleaning_actuators:
+  ros__parameters:
+    vacuum_speed: 38
+    main_brush_speed: 71
+    side_brush_speed: 30

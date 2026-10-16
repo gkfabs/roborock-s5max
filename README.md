@@ -13,12 +13,6 @@ colcon build --packages-select roborock_s5max
 source install/setup.bash
 ```
 
-Inspect the model with:
-
-```bash
-ros2 launch roborock_s5max inspect_model.launch.py
-```
-
 Start physical bring-up with:
 
 ```bash
@@ -32,12 +26,6 @@ The physical launch expects SangamIO on TCP port `5555`. It does not perform the
 The repository Makefile combines the robot takeover, ROS build, RViz model, bridge, and joystick tools.
 The bridge repository defaults to the sibling directory `../vacuum_ros2_bridge-review`.
 Set `BRIDGE_REPO` if the bridge is at a different path.
-
-Inspect the model without a robot:
-
-```bash
-make model
-```
 
 Monitor the physical robot in RViz without wheel commands:
 
@@ -58,7 +46,7 @@ make sangamio
 Start SangamIO, RViz, LiDAR, the ROS bridge, and joystick control:
 
 ```bash
-make demo
+make teleop
 ```
 
 Physically undock the robot and put it on a clear, level floor.
@@ -112,9 +100,16 @@ The joystick publishes on `/cmd_vel_manual` while its deadman is active.
 Future Nav2 commands use `/cmd_vel_nav`.
 `twist_mux` gives manual control priority and publishes the selected command on `/cmd_vel`.
 
-The safety adapter gives bumper, cliff, and stale-odometry stops the highest priority.
-Safety events remain latched after the sensor becomes clear.
-After you remove the hazard, release the safety stop from another terminal:
+The bumper adapter publishes the left and right contact states.
+If the robot touches an obstacle during forward motion, contact recovery starts.
+It stops, moves backward slowly, turns away from the contact, and stops again.
+If the bumper remains pressed, contact recovery holds a zero command.
+
+If a cliff signal starts during forward motion, the safety adapter stops and moves backward slowly once.
+The safety stop releases when all cliff signals clear.
+
+A stale-odometry event remains latched.
+After odometry recovers, release that safety stop from another terminal:
 
 ```bash
 make safety-reset
@@ -126,6 +121,18 @@ Restore the stock robot software and Valetudo:
 make valetudo
 ```
 
+Run the first autonomous coverage slice on an existing map:
+
+```bash
+make coverage NAME=apartment
+```
+
+RViz starts before autonomous movement. Make sure that the robot pose and LiDAR scan align with the map. Then type `clean` in the terminal.
+
+The OOMWOO reactive executor controls short cleaning rows. Nav2 controls longer travel between rows. The contact reflex overrides both sources during a bumper recovery. It releases control after the reverse and turn sequence.
+
+The cleaning actuator manager starts the fan and both brushes when coverage starts. It stops all cleaning actuators when coverage ends or the session stops. A joystick can override the route when it is connected.
+
 Use `ROBOT_IP`, `ROS_IMAGE`, `BRIDGE_REPO`, `MAP_DIR`, and `DEMO_SECONDS` to change the local environment.
 The bounded takeover programs are in `scripts/`.
 
@@ -133,4 +140,8 @@ The bounded takeover programs are in `scripts/`.
 
 The wheel, caster, and LiDAR positions are temporary. Calibrate them before navigation tests.
 
-Gazebo, cleaning, mopping, and docking remain later milestones.
+The coverage command starts from an undocked, localized robot. It does not undock, return to the dock, or confirm charging.
+
+The contact recovery does not yet record contact in the OOMWOO tactile map. The coverage executor resumes the current route after the bounded recovery.
+
+Gazebo, complete cleaning, mopping, and docking remain later milestones.

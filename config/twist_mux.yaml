@@ -6,6 +6,14 @@ twist_mux:
         topic: /cmd_vel_safety
         timeout: 0.2
         priority: 255
+      contact:
+        topic: /cmd_vel_contact
+        timeout: 0.2
+        priority: 200
+      cleaning:
+        topic: /cmd_vel_clean
+        timeout: 0.5
+        priority: 20
       navigation:
         topic: /cmd_vel_nav
         timeout: 0.5

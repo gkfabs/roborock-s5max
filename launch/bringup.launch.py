@@ -78,6 +78,36 @@ def generate_launch_description():
         parameters=[{
             'odom_timeout_sec': 0.5,
             'publish_rate_hz': 20.0,
+            'cliff_stop_seconds': 0.10,
+            'cliff_backup_seconds': 0.60,
+            'cliff_backup_speed': -0.05,
+            'command_fresh_seconds': 0.30,
+            'minimum_forward_speed': 0.01,
+        }],
+    )
+
+    bumper_adapter = Node(
+        package='roborock_s5max',
+        executable='bumper_adapter.py',
+        name='s5max_bumper_adapter',
+        output='screen',
+    )
+
+    contact_reflex = Node(
+        package='roborock_s5max',
+        executable='contact_reflex.py',
+        name='s5max_contact_reflex',
+        output='screen',
+        parameters=[{
+            'publish_rate_hz': 20.0,
+            'stop_seconds': 0.10,
+            'backup_seconds': 0.60,
+            'turn_seconds': 0.60,
+            'settle_seconds': 0.10,
+            'backup_speed': -0.05,
+            'turn_speed': 0.45,
+            'command_fresh_seconds': 0.30,
+            'minimum_forward_speed': 0.01,
         }],
     )
 
@@ -101,6 +131,8 @@ def generate_launch_description():
         bridge,
         velocity_mux,
         safety_adapter,
+        bumper_adapter,
+        contact_reflex,
         state_publisher,
         joint_publisher,
     ])

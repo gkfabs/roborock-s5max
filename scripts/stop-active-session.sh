@@ -9,7 +9,7 @@ BRIDGE_REPO="${BRIDGE_REPO:-$REPOSITORY_DIR/../vacuum_ros2_bridge-review}"
 ROBOT_DESCRIPTION_REPO="${ROBOT_DESCRIPTION_REPO:-$REPOSITORY_DIR}"
 
 if [ ! -f "$ROS_WORKSPACE/install/setup.bash" ]; then
-    echo "ERROR: The ROS workspace is not built. Run make demo or make ros-build first." >&2
+    echo "ERROR: The ROS workspace is not built. Run make teleop or make ros-build first." >&2
     exit 1
 fi
 

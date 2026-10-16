@@ -30,6 +30,44 @@ Visualization Manager:
       Topic:
         Durability Policy: Transient Local
         Value: /map
+    - Alpha: 0.3
+      Class: rviz_default_plugins/Map
+      Color Scheme: costmap
+      Draw Behind: false
+      Enabled: true
+      Name: Global Costmap
+      Topic:
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+        Value: /global_costmap/costmap
+    - Alpha: 0.6
+      Class: rviz_default_plugins/Map
+      Color Scheme: costmap
+      Draw Behind: false
+      Enabled: true
+      Name: Local Costmap
+      Topic:
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+        Value: /local_costmap/costmap
+    - Alpha: 1
+      Class: rviz_default_plugins/Polygon
+      Color: 255; 25; 25
+      Enabled: true
+      Name: Collision stop zone
+      Topic:
+        Durability Policy: Volatile
+        Reliability Policy: Reliable
+        Value: /collision_stop_zone
+    - Alpha: 1
+      Class: rviz_default_plugins/Polygon
+      Color: 255; 170; 0
+      Enabled: true
+      Name: Collision slow zone
+      Topic:
+        Durability Policy: Volatile
+        Reliability Policy: Reliable
+        Value: /collision_slow_zone
     - Class: rviz_default_plugins/Path
       Enabled: true
       Name: Global plan
@@ -40,6 +78,13 @@ Visualization Manager:
       Name: Local plan
       Topic:
         Value: /local_plan
+    - Class: rviz_default_plugins/Path
+      Enabled: true
+      Name: Coverage plan
+      Topic:
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+        Value: /coverage_planner/plan
   Enabled: true
   Global Options:
     Background Color: 30; 30; 30
