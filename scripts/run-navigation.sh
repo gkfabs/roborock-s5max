@@ -91,13 +91,8 @@ else
 fi
 
 echo "Map: $MAP_DIR/$NAME.yaml"
-echo "Place the robot undocked at the map starting position."
-echo "Keep the floor clear around the robot."
-read -r -p "Type 'floor-clear' to continue: " confirmation
-if [ "$confirmation" != "floor-clear" ]; then
-    echo "The navigation session was canceled."
-    exit 1
-fi
+echo "Place the robot at a known map position or start from its mapped dock."
+echo "Keep at least 35 cm of clear floor behind it for automatic undocking."
 
 trap restore_valetudo EXIT INT TERM
 

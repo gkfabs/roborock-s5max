@@ -36,6 +36,7 @@ def generate_launch_description():
             'odom_frame_id': 'odom',
             'lidar_frame_id': 'base_scan',
             'publish_tf': 'true',
+            'undock_before_lidar': 'true',
             'scan_time_offset': '0.0',
             'scan_mask_deg': '',
         }.items(),

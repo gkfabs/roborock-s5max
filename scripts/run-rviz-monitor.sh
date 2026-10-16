@@ -17,13 +17,16 @@ restore_valetudo()
     ROBOT="$ROBOT" "$SCRIPT_DIR/robot-mode.sh" valetudo || true
 }
 
+echo "The robot can start docked or undocked on a clear, level floor."
+echo "Keep at least 35 cm of clear floor behind it for automatic undocking."
+
 trap restore_valetudo EXIT INT TERM
 
 ROBOT="$ROBOT" DEMO_SECONDS="$DEMO_SECONDS" \
     "$SCRIPT_DIR/robot-mode.sh" sangamio
 
-echo "Starting physical RViz monitoring. No movement command will be sent."
-echo "The robot must be physically undocked so the LiDAR can start."
+echo "Starting physical RViz monitoring."
+echo "If the robot is docked, it will reverse a short distance before the LiDAR starts."
 echo "Close RViz or press Ctrl-C to stop the LiDAR and restore Valetudo."
 
 docker run --rm --name "$CONTAINER" --network host \

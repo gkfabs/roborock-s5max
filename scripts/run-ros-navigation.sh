@@ -107,7 +107,7 @@ fi
 
 echo "Waiting for LiDAR, odometry, localization, and Nav2..."
 if ! timeout 15 ros2 topic echo --once /scan >/dev/null 2>&1; then
-    echo "ERROR: No LiDAR scan arrived. Physically undock the robot and retry." >&2
+    echo "ERROR: Automatic undocking or LiDAR startup did not produce a scan." >&2
     exit 1
 fi
 if ! timeout 5 ros2 topic echo --once /odom >/dev/null 2>&1; then

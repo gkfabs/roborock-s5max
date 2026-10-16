@@ -56,7 +56,7 @@ fi
 
 echo "Waiting for the first LiDAR scan..."
 if ! timeout 15 ros2 topic echo --once /scan >/dev/null 2>&1; then
-    echo "ERROR: No LiDAR scan arrived. Physically undock the robot and retry." >&2
+    echo "ERROR: Automatic undocking or LiDAR startup did not produce a scan." >&2
     exit 1
 fi
 echo "LiDAR is active. RViz is receiving /scan data."

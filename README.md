@@ -33,8 +33,8 @@ Monitor the physical robot in RViz without wheel commands:
 make rviz
 ```
 
-Physically undock the robot before you start this command.
-The S5 Max driver does not start the LiDAR while the robot is docked.
+Keep at least 35 cm of clear floor behind the robot.
+If the robot is docked, the driver moves it backward before it starts the LiDAR.
 Close RViz to stop the LiDAR and restore Valetudo.
 
 Start SangamIO on the robot:
@@ -49,7 +49,8 @@ Start SangamIO, RViz, LiDAR, the ROS bridge, and joystick control:
 make teleop
 ```
 
-Physically undock the robot and put it on a clear, level floor.
+Put the robot on a clear, level floor.
+If it is docked, keep at least 35 cm of clear floor behind it.
 Hold joystick button 3 to enable movement and actuator changes.
 Use the analog sticks to control linear and angular speed.
 Use buttons 0, 1, and 2 to toggle the vacuum, main brush, and side brush.
@@ -76,7 +77,8 @@ Localize on a saved map and start Nav2:
 make navigate NAME=apartment
 ```
 
-Physically undock the robot and put it at the map starting position.
+Put the robot at a known map position or start from its mapped dock.
+If it is docked, keep at least 35 cm of clear floor behind it.
 The command loads the saved SLAM pose graph and starts RViz.
 It does not send a movement command during startup.
 Make sure that the LiDAR scan aligns with the map before you set a goal.
@@ -140,7 +142,7 @@ The bounded takeover programs are in `scripts/`.
 
 The wheel, caster, and LiDAR positions are temporary. Calibrate them before navigation tests.
 
-The coverage command starts from an undocked, localized robot. It does not undock, return to the dock, or confirm charging.
+The coverage command can automatically undock. It does not return to the dock or confirm charging.
 
 The contact recovery does not yet record contact in the OOMWOO tactile map. The coverage executor resumes the current route after the bounded recovery.
 

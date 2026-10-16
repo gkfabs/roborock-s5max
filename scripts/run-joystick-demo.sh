@@ -66,12 +66,8 @@ restore_valetudo()
 
 find_joystick
 echo "Joystick found: $JOY_EVENT and $JOY_JS"
-echo "The robot must be physically undocked on a clear, level floor."
-read -r -p "Type 'floor-clear' to continue: " confirmation
-if [ "$confirmation" != "floor-clear" ]; then
-    echo "The demonstration was canceled."
-    exit 1
-fi
+echo "The robot can start docked or undocked on a clear, level floor."
+echo "Keep at least 35 cm of clear floor behind it for automatic undocking."
 
 trap restore_valetudo EXIT INT TERM
 
