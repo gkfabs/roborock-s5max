@@ -47,6 +47,7 @@ controller_server:
         - PathAlign
         - PathDist
         - GoalDist
+      xy_goal_tolerance: 0.08
 
 smoother_server:
   ros__parameters:
@@ -182,15 +183,7 @@ collision_monitor:
     source_timeout: 0.5
     base_shift_correction: true
     stop_pub_timeout: 1.0
-    polygons: ["StopZone", "SlowZone"]
-    StopZone:
-      type: circle
-      radius: 0.24
-      action_type: stop
-      min_points: 3
-      visualize: true
-      polygon_pub_topic: collision_stop_zone
-      enabled: true
+    polygons: ["SlowZone"]
     SlowZone:
       type: circle
       radius: 0.38
