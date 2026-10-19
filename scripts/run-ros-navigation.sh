@@ -75,7 +75,8 @@ trap stop_on_signal INT TERM
 
 ros2 launch roborock_s5max navigation.launch.py \
     robot_ip:="$ROBOT_IP" \
-    posegraph_path:="/maps/${MAP_NAME}_serial" &
+    posegraph_path:="/maps/${MAP_NAME}_serial" \
+    start_pose_path:="/maps/${MAP_NAME}.dock.json" &
 launch_pid=$!
 
 for _ in $(seq 1 30); do

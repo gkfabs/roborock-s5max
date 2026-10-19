@@ -1,12 +1,63 @@
 #!/usr/bin/env python3
 
+import json
+import os
+import tempfile
+
+import yaml
+
 from ament_index_python.packages import get_package_share_path
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import (
+    DeclareLaunchArgument,
+    IncludeLaunchDescription,
+    OpaqueFunction,
+)
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
-from nav2_common.launch import RewrittenYaml
+def make_localization(context, package_path, slam_launch, posegraph_path,
+                      start_pose_path, use_sim_time):
+    pose_path = context.perform_substitution(start_pose_path)
+    graph_path = context.perform_substitution(posegraph_path)
+    x = 0.0
+    y = 0.0
+    yaw = 0.0
+    if pose_path and os.path.isfile(pose_path):
+        with open(pose_path, encoding='utf-8') as source:
+            data = json.load(source)
+        stage = data['stage']
+        x = float(stage['x'])
+        y = float(stage['y'])
+        yaw = float(stage['yaw'])
+        print(
+            'Localization start pose: '
+            f'x={x:.3f} y={y:.3f} yaw={yaw:.3f} from {pose_path}')
+    elif pose_path:
+        print(
+            f'Localization start pose file not found: {pose_path}. '
+            'Using the pose graph origin.')
+
+    source_path = package_path / 'config' / 'mapper_params_localization.yaml'
+    with open(source_path, encoding='utf-8') as source:
+        parameters = yaml.safe_load(source)
+    slam_parameters = parameters['slam_toolbox']['ros__parameters']
+    slam_parameters['map_file_name'] = graph_path
+    slam_parameters['map_start_pose'] = [x, y, yaw]
+    temporary = tempfile.NamedTemporaryFile(
+        mode='w', prefix='s5max-localization-', suffix='.yaml', delete=False)
+    yaml.safe_dump(parameters, temporary)
+    temporary.close()
+    localization_params = temporary.name
+    return [IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(str(slam_launch)),
+        launch_arguments={
+            'use_sim_time': use_sim_time,
+            'slam_params_file': localization_params,
+            'autostart': 'true',
+            'use_lifecycle_manager': 'false',
+        }.items(),
+    )]
 
 
 def generate_launch_description():
@@ -21,16 +72,9 @@ def generate_launch_description():
     robot_ip = LaunchConfiguration('robot_ip')
     robot_port = LaunchConfiguration('robot_port')
     posegraph_path = LaunchConfiguration('posegraph_path')
+    start_pose_path = LaunchConfiguration('start_pose_path')
     use_sim_time = LaunchConfiguration('use_sim_time')
 
-    localization_params = RewrittenYaml(
-        source_file=str(
-            package_path / 'config' / 'mapper_params_localization.yaml'
-        ),
-        root_key='',
-        param_rewrites={'map_file_name': posegraph_path},
-        convert_types=True,
-    )
     navigation_params = str(package_path / 'config' / 'navigation.yaml')
     common_parameters = [
         navigation_params,
@@ -46,14 +90,15 @@ def generate_launch_description():
             'use_sim_time': use_sim_time,
         }.items(),
     )
-    localization = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(str(slam_launch)),
-        launch_arguments={
-            'use_sim_time': use_sim_time,
-            'slam_params_file': localization_params,
-            'autostart': 'true',
-            'use_lifecycle_manager': 'false',
-        }.items(),
+    localization = OpaqueFunction(
+        function=make_localization,
+        args=[
+            package_path,
+            slam_launch,
+            posegraph_path,
+            start_pose_path,
+            use_sim_time,
+        ],
     )
 
     controller = Node(
@@ -142,6 +187,11 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'posegraph_path',
             description='Saved SLAM Toolbox pose graph path without extension.',
+        ),
+        DeclareLaunchArgument(
+            'start_pose_path',
+            default_value='',
+            description='Dock pose JSON used as the localization start pose.',
         ),
         DeclareLaunchArgument(
             'use_sim_time',
