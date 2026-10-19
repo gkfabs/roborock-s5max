@@ -24,6 +24,7 @@ def generate_launch_description():
     bringup_path = package_path / 'launch' / 'bringup.launch.py'
 
     physical = LaunchConfiguration('physical')
+    show_rviz = LaunchConfiguration('show_rviz')
     use_sim_time = LaunchConfiguration('use_sim_time')
     robot_description = ParameterValue(
         Command(['xacro ', str(model_path)]),
@@ -66,6 +67,7 @@ def generate_launch_description():
         package='rviz2',
         executable='rviz2',
         name='rviz2',
+        condition=IfCondition(show_rviz),
         output='screen',
         arguments=['-d', str(rviz_path)],
     )
@@ -74,7 +76,8 @@ def generate_launch_description():
         OnProcessExit(
             target_action=rviz,
             on_exit=[EmitEvent(event=Shutdown(reason='RViz closed'))],
-        )
+        ),
+        condition=IfCondition(show_rviz),
     )
 
     return LaunchDescription([
@@ -99,6 +102,12 @@ def generate_launch_description():
             default_value='false',
             choices=['true', 'false'],
             description='Use the simulation clock.',
+        ),
+        DeclareLaunchArgument(
+            'show_rviz',
+            default_value='true',
+            choices=['true', 'false'],
+            description='Start the RViz window.',
         ),
         physical_bringup,
         model_only_state_publisher,

@@ -13,7 +13,7 @@ DEMO_SECONDS ?= 1800
 MAP_DIR ?= $(HOME)/.local/share/roborock-s5max/maps
 NAME ?=
 
-.PHONY: help valetudo sangamio teleop map navigate coverage rviz stop safety-reset ros-image ros-build
+.PHONY: help valetudo sangamio teleop map navigate coverage rviz dock-signals dock-signals-undocked redock-test dock-calibrate back2dock stop safety-reset ros-image ros-build
 
 help:
 	@echo "make valetudo  - stop the ROS session and restore the stock robot software"
@@ -23,6 +23,11 @@ help:
 	@echo "make navigate NAME=<name> - localize on a saved map and start Nav2"
 	@echo "make coverage NAME=<name> - run mapped-area coverage with contact recovery"
 	@echo "make rviz      - monitor the physical robot in RViz without movement"
+	@echo "make dock-signals - show the passive dock infrared signals"
+	@echo "make dock-signals-undocked - undock and show the dock infrared signals"
+	@echo "make redock-test - undock, make a bounded final dock approach, and confirm charging"
+	@echo "make dock-calibrate NAME=<name> - save the map staging pose and redock"
+	@echo "make back2dock NAME=<name> - navigate to the saved staging pose and redock"
 	@echo "make stop      - stop wheels and cleaning actuators without a reboot"
 	@echo "make safety-reset - release a cleared physical safety stop"
 
@@ -63,6 +68,41 @@ rviz: ros-build
 		ROBOT_DESCRIPTION_REPO="$(ROBOT_DESCRIPTION_REPO)" \
 		DEMO_SECONDS="$(DEMO_SECONDS)" \
 		./scripts/run-rviz-monitor.sh
+
+dock-signals: ros-build
+	@ROBOT="$(ROBOT)" ROBOT_IP="$(ROBOT_IP)" ROS_IMAGE="$(ROS_IMAGE)" \
+		ROS_WORKSPACE="$(ROS_WORKSPACE)" BRIDGE_REPO="$(BRIDGE_REPO)" \
+		ROBOT_DESCRIPTION_REPO="$(ROBOT_DESCRIPTION_REPO)" \
+		DEMO_SECONDS="$(DEMO_SECONDS)" \
+		./scripts/run-dock-signals.sh
+
+dock-signals-undocked: ros-build
+	@ROBOT="$(ROBOT)" ROBOT_IP="$(ROBOT_IP)" ROS_IMAGE="$(ROS_IMAGE)" \
+		ROS_WORKSPACE="$(ROS_WORKSPACE)" BRIDGE_REPO="$(BRIDGE_REPO)" \
+		ROBOT_DESCRIPTION_REPO="$(ROBOT_DESCRIPTION_REPO)" \
+		DEMO_SECONDS="$(DEMO_SECONDS)" UNDOCK=1 \
+		./scripts/run-dock-signals.sh
+
+redock-test: ros-build
+	@ROBOT="$(ROBOT)" ROBOT_IP="$(ROBOT_IP)" ROS_IMAGE="$(ROS_IMAGE)" \
+		ROS_WORKSPACE="$(ROS_WORKSPACE)" BRIDGE_REPO="$(BRIDGE_REPO)" \
+		ROBOT_DESCRIPTION_REPO="$(ROBOT_DESCRIPTION_REPO)" \
+		DEMO_SECONDS="$(DEMO_SECONDS)" UNDOCK=1 REDOCK=1 \
+		./scripts/run-dock-signals.sh
+
+dock-calibrate: ros-build
+	@ROBOT="$(ROBOT)" ROBOT_IP="$(ROBOT_IP)" ROS_IMAGE="$(ROS_IMAGE)" \
+		ROS_WORKSPACE="$(ROS_WORKSPACE)" BRIDGE_REPO="$(BRIDGE_REPO)" \
+		ROBOT_DESCRIPTION_REPO="$(ROBOT_DESCRIPTION_REPO)" \
+		DEMO_SECONDS="$(DEMO_SECONDS)" MAP_DIR="$(MAP_DIR)" NAME="$(NAME)" \
+		DOCK_MODE=calibrate ./scripts/run-docking.sh
+
+back2dock: ros-build
+	@ROBOT="$(ROBOT)" ROBOT_IP="$(ROBOT_IP)" ROS_IMAGE="$(ROS_IMAGE)" \
+		ROS_WORKSPACE="$(ROS_WORKSPACE)" BRIDGE_REPO="$(BRIDGE_REPO)" \
+		ROBOT_DESCRIPTION_REPO="$(ROBOT_DESCRIPTION_REPO)" \
+		DEMO_SECONDS="$(DEMO_SECONDS)" MAP_DIR="$(MAP_DIR)" NAME="$(NAME)" \
+		DOCK_MODE=return ./scripts/run-docking.sh
 
 teleop: ros-build
 	@ROBOT="$(ROBOT)" ROBOT_IP="$(ROBOT_IP)" ROS_IMAGE="$(ROS_IMAGE)" \

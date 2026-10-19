@@ -87,6 +87,29 @@ After localization is correct, use `Nav2 Goal` to select a clear nearby target.
 The joystick remains available as a higher-priority manual override when connected.
 Close RViz or press `Ctrl-C` to stop Nav2 and restore Valetudo.
 
+Record the dock staging pose for one saved map:
+
+```bash
+make dock-calibrate NAME=apartment
+```
+
+Start the robot on the dock. The command undocks and opens RViz. Use `2D Pose
+Estimate` if the live scan does not align with the saved map. Type `record` in
+the terminal after the alignment is correct. The command stores the most
+recent RViz estimate in `apartment.dock.json` and returns to stable charging.
+The command does not replace an existing staging file.
+
+Return to the dock:
+
+```bash
+make back2dock NAME=apartment
+```
+
+The command starts localization and shows RViz. Make sure that the live scan
+aligns with the map. Use `2D Pose Estimate` if the pose is wrong. Type `dock`
+in the terminal after the pose is correct. Nav2 travels to the saved staging
+pose. The beacon controller makes the final approach and confirms charging.
+
 The first ROS command builds `roborock_s5max_ros:latest` from
 `oomwoo_one:latest`.
 This image adds SLAM Toolbox and Nav2.
@@ -142,7 +165,8 @@ The bounded takeover programs are in `scripts/`.
 
 The wheel, caster, and LiDAR positions are temporary. Calibrate them before navigation tests.
 
-The coverage command can automatically undock. It does not return to the dock or confirm charging.
+The coverage command can automatically undock. It does not yet call the tested
+return-to-dock command when coverage ends.
 
 The contact recovery does not yet record contact in the OOMWOO tactile map. The coverage executor resumes the current route after the bounded recovery.
 

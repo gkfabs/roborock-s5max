@@ -94,6 +94,13 @@ def generate_launch_description():
         output='screen',
     )
 
+    dock_beacon_adapter = Node(
+        package='roborock_s5max',
+        executable='dock_beacon_adapter.py',
+        name='s5max_dock_beacon_adapter',
+        output='screen',
+    )
+
     contact_reflex = Node(
         package='roborock_s5max',
         executable='contact_reflex.py',
@@ -133,6 +140,7 @@ def generate_launch_description():
         velocity_mux,
         safety_adapter,
         bumper_adapter,
+        dock_beacon_adapter,
         contact_reflex,
         state_publisher,
         joint_publisher,
