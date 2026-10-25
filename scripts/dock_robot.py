@@ -6,12 +6,12 @@ import math
 import sys
 import time
 
-import rclpy
 from action_msgs.msg import GoalStatus
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Twist
 from lifecycle_msgs.msg import State
 from lifecycle_msgs.srv import GetState
 from nav2_msgs.action import DockRobot, UndockRobot
+import rclpy
 from rclpy.action import ActionClient
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
@@ -97,6 +97,8 @@ class DockRobotClient(Node):
             Bool, '/contact_reflex/inhibit', inhibit_qos)
         self.state_publisher = self.create_publisher(
             String, '/dock_robot/state', inhibit_qos)
+        self.safety_publisher = self.create_publisher(
+            Twist, '/cmd_vel_safety', 10)
         self.create_subscription(
             PoseStamped,
             '/detected_dock_pose',
@@ -110,6 +112,63 @@ class DockRobotClient(Node):
 
     def inhibit_contact_reflex(self, inhibited):
         self.inhibit_publisher.publish(Bool(data=bool(inhibited)))
+
+    def publish_zero_velocity(self):
+        self.safety_publisher.publish(Twist())
+
+    def hold_zero_velocity(self, duration):
+        deadline = time.monotonic() + max(0.0, float(duration))
+        while rclpy.ok() and time.monotonic() < deadline:
+            self.publish_zero_velocity()
+            rclpy.spin_once(self, timeout_sec=0.05)
+
+    def cancel_and_stop(self, timeout, result_future=None):
+        self.publish_state('CANCELING')
+        self.publish_zero_velocity()
+        if self.goal_handle is None:
+            self.hold_zero_velocity(0.5)
+            self.publish_state('WAITING')
+            return True
+
+        deadline = time.monotonic() + max(0.1, float(timeout))
+        cancel_future = self.goal_handle.cancel_goal_async()
+        while (
+                rclpy.ok()
+                and not cancel_future.done()
+                and time.monotonic() < deadline):
+            self.publish_zero_velocity()
+            rclpy.spin_once(self, timeout_sec=0.05)
+        if not cancel_future.done() or cancel_future.result() is None:
+            self.get_logger().error(
+                'The DockRobot cancellation request timed out.')
+            self.hold_zero_velocity(0.5)
+            return False
+        if cancel_future.result().return_code != 0:
+            self.get_logger().error(
+                'The DockRobot server rejected cancellation with code %d.'
+                % cancel_future.result().return_code)
+            self.hold_zero_velocity(0.5)
+            return False
+
+        if result_future is None:
+            result_future = self.goal_handle.get_result_async()
+        while (
+                rclpy.ok()
+                and not result_future.done()
+                and time.monotonic() < deadline):
+            self.publish_zero_velocity()
+            rclpy.spin_once(self, timeout_sec=0.05)
+        completed = result_future.done()
+        if completed:
+            self.get_logger().info(
+                'The DockRobot goal stopped with status %d.'
+                % result_future.result().status)
+        else:
+            self.get_logger().error(
+                'The DockRobot goal did not stop after cancellation.')
+        self.hold_zero_velocity(0.5)
+        self.publish_state('WAITING')
+        return completed
 
     def detection(self, message):
         if message.header.frame_id:
@@ -209,14 +268,14 @@ class DockRobotClient(Node):
             'DockRobot accepted target x=%.3f y=%.3f yaw=%.3f.' % self.pose)
         return True
 
-    def wait(self, operation_timeout):
+    def wait(self, operation_timeout, cancel_timeout=5.0):
         future = self.goal_handle.get_result_async()
         deadline = time.monotonic() + operation_timeout
         while rclpy.ok() and not future.done() and time.monotonic() < deadline:
             rclpy.spin_once(self, timeout_sec=0.1)
         if not future.done():
             self.get_logger().error('The DockRobot action reached its client time limit.')
-            self.goal_handle.cancel_goal_async()
+            self.cancel_and_stop(cancel_timeout, result_future=future)
             return False
         wrapped = future.result()
         result = wrapped.result
@@ -289,6 +348,7 @@ def main(args=None):
     parser.add_argument('--server-timeout', type=float, default=30.0)
     parser.add_argument('--staging-timeout', type=float, default=300.0)
     parser.add_argument('--operation-timeout', type=float, default=420.0)
+    parser.add_argument('--cancel-timeout', type=float, default=5.0)
     parser.add_argument('--undock-after', default='false')
     parser.add_argument('--undock-timeout', type=float, default=30.0)
     parser.add_argument('--result-path')
@@ -322,7 +382,10 @@ def main(args=None):
         node.inhibit_contact_reflex(True)
         rclpy.spin_once(node, timeout_sec=0.1)
         if node.start(options.server_timeout):
-            dock_success = node.wait(options.operation_timeout)
+            dock_success = node.wait(
+                options.operation_timeout,
+                cancel_timeout=options.cancel_timeout,
+            )
             success = dock_success
             if dock_success and parse_bool(options.undock_after):
                 undock_success = node.undock(
@@ -331,8 +394,8 @@ def main(args=None):
                 )
                 success = undock_success
     except (KeyboardInterrupt, ExternalShutdownException):
-        if node.goal_handle is not None:
-            node.goal_handle.cancel_goal_async()
+        if rclpy.ok():
+            node.cancel_and_stop(options.cancel_timeout)
     finally:
         if rclpy.ok():
             node.inhibit_contact_reflex(False)

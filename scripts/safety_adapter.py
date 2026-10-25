@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-import time
 from dataclasses import dataclass
+import time
 
-import rclpy
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
+import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
@@ -108,13 +108,21 @@ class SafetyAdapter(Node):
             Twist, '/cmd_vel', self.on_drive_command, 10
         )
         self.create_service(Trigger, '/reset_safety', self.on_reset)
+        self.create_service(Trigger, '/stop_motion', self.on_stop)
         self.timer = self.create_timer(1.0 / publish_rate, self.on_timer)
 
         self.last_odom = None
         self.last_forward_command = None
         self.cliff_active = False
+        self.operator_stop = False
         self.latched_reason = None
         self.last_reported_reason = object()
+
+    def on_stop(self, _request, response):
+        self.operator_stop = True
+        response.success = True
+        response.message = 'The operator safety stop is active.'
+        return response
 
     def on_cliff(self, message):
         now = time.monotonic()
@@ -145,6 +153,8 @@ class SafetyAdapter(Node):
             self.last_forward_command = time.monotonic()
 
     def current_reason(self):
+        if self.operator_stop:
+            return 'operator stop'
         if self.latched_reason is not None:
             return self.latched_reason
         if self.last_odom is None:
@@ -191,6 +201,7 @@ class SafetyAdapter(Node):
             return response
 
         self.latched_reason = None
+        self.operator_stop = False
         self.cliff_recovery.update(False, time.monotonic(), False)
         response.success = True
         response.message = 'Safety stop released.'

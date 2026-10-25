@@ -2,6 +2,7 @@ import importlib.util
 import json
 import math
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -74,3 +75,42 @@ def test_parse_bool_accepts_launch_values():
 def test_parse_bool_rejects_unknown_values():
     with pytest.raises(ValueError):
         MODULE.parse_bool('yes')
+
+
+class CompletedFuture:
+    def __init__(self, result):
+        self._result = result
+
+    def done(self):
+        return True
+
+    def result(self):
+        return self._result
+
+
+class StubLogger:
+    def info(self, _message):
+        pass
+
+    def error(self, _message):
+        pass
+
+
+def test_cancellation_waits_for_the_terminal_action_result():
+    result_future = CompletedFuture(SimpleNamespace(
+        status=MODULE.GoalStatus.STATUS_CANCELED))
+    goal_handle = SimpleNamespace(
+        cancel_goal_async=lambda: CompletedFuture(SimpleNamespace(
+            return_code=0)),
+        get_result_async=lambda: result_future,
+    )
+    node = object.__new__(MODULE.DockRobotClient)
+    node.goal_handle = goal_handle
+    states = []
+    node.publish_state = states.append
+    node.publish_zero_velocity = lambda: None
+    node.hold_zero_velocity = lambda _duration: None
+    node.get_logger = lambda: StubLogger()
+
+    assert node.cancel_and_stop(1.0)
+    assert states == ['CANCELING', 'WAITING']

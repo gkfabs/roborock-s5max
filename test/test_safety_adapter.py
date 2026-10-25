@@ -1,6 +1,8 @@
 import importlib.util
 from pathlib import Path
 import sys
+import time
+from types import SimpleNamespace
 
 
 MODULE_PATH = (
@@ -54,3 +56,31 @@ def test_cleared_cliff_stops_and_arms_the_next_event():
 
     controller.update(True, 41.0, allow_start=True)
     assert controller.command(41.2).state == MODULE.BACKUP
+
+
+def test_operator_stop_latches_until_safety_reset():
+    adapter = object.__new__(MODULE.SafetyAdapter)
+    adapter.operator_stop = False
+    adapter.latched_reason = None
+    response = SimpleNamespace(success=False, message='')
+
+    result = adapter.on_stop(None, response)
+
+    assert result.success
+    assert adapter.operator_stop
+
+
+def test_safety_reset_releases_operator_stop():
+    adapter = object.__new__(MODULE.SafetyAdapter)
+    adapter.operator_stop = True
+    adapter.latched_reason = None
+    adapter.cliff_active = False
+    adapter.last_odom = time.monotonic()
+    adapter.odom_timeout = 1.0
+    adapter.cliff_recovery = SimpleNamespace(update=lambda *_args: None)
+    response = SimpleNamespace(success=False, message='')
+
+    result = adapter.on_reset(None, response)
+
+    assert result.success
+    assert not adapter.operator_stop

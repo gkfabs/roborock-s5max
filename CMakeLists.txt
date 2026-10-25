@@ -62,6 +62,7 @@ install(
     scripts/cleaning_actuator_manager.py
     scripts/contact_reflex.py
     scripts/dock_beacon_adapter.py
+    scripts/cancel_docking.py
     scripts/dock_pose_estimator.py
     scripts/dock_robot.py
     scripts/dock_scan_fault_adapter.py
@@ -97,6 +98,10 @@ if(BUILD_TESTING)
   ament_add_pytest_test(
     dock_robot_test
     test/test_dock_robot.py
+  )
+  ament_add_pytest_test(
+    cancel_docking_test
+    test/test_cancel_docking.py
   )
   ament_add_pytest_test(
     dock_sim_adapter_test
