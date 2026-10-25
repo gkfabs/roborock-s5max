@@ -49,6 +49,11 @@ if [ ! -f "$MAP_DIR/${NAME}_serial.posegraph" ]; then
     echo "ERROR: The pose graph does not exist: $MAP_DIR/${NAME}_serial.posegraph" >&2
     exit 1
 fi
+if [ ! -f "$MAP_DIR/$NAME.dock.json" ]; then
+    echo "ERROR: The dock staging pose does not exist: $MAP_DIR/$NAME.dock.json" >&2
+    echo "Run make dock-calibrate NAME=$NAME before coverage." >&2
+    exit 1
+fi
 if [ -z "${DISPLAY:-}" ] || [ ! -d /tmp/.X11-unix ]; then
     echo "ERROR: An X11 display is required for RViz." >&2
     exit 1
@@ -79,6 +84,7 @@ fi
 echo "Map: $MAP_DIR/$NAME.yaml"
 echo "Place the robot near a known map position or start from its mapped dock."
 echo "Keep at least 35 cm of clear floor behind it for automatic undocking."
+echo "Successful coverage will return the robot to this mapped dock."
 
 trap restore_valetudo EXIT INT TERM
 

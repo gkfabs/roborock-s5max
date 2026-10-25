@@ -85,7 +85,7 @@ fi
 timeout 8 ros2 service call /set_lidar vacuum_ros2_bridge/srv/SetLidar \
     '{enable: true}' || true
 
-echo "Waiting for LiDAR, odometry, localization, and Nav2..."
+echo "Waiting for LiDAR, odometry, and localization..."
 if ! timeout 15 ros2 topic echo --once /scan >/dev/null 2>&1; then
     echo "ERROR: Automatic undocking or LiDAR startup did not produce a scan." >&2
     exit 1
@@ -99,18 +99,8 @@ if ! timeout 30 ros2 topic echo --once /map >/dev/null 2>&1; then
     exit 1
 fi
 
-nav2_ready=false
-for _ in $(seq 1 30); do
-    if ros2 lifecycle get /controller_server 2>/dev/null | grep -q 'active'; then
-        nav2_ready=true
-        break
-    fi
-    sleep 1
-done
-if [ "$nav2_ready" != true ]; then
-    echo "ERROR: Nav2 did not become active." >&2
-    exit 1
-fi
+rviz2 -d /ws/install/roborock_s5max/share/roborock_s5max/rviz/navigation.rviz &
+rviz_pid=$!
 
 if [ "$ENABLE_JOYSTICK" = true ]; then
     ros2 run joy joy_node --ros-args \
@@ -120,9 +110,6 @@ if [ "$ENABLE_JOYSTICK" = true ]; then
     pilot_pid=$!
     echo "Hold joystick button 3 for manual override."
 fi
-
-rviz2 -d /ws/install/roborock_s5max/share/roborock_s5max/rviz/navigation.rviz &
-rviz_pid=$!
 
 echo "Use 2D Pose Estimate if the robot does not align with the saved map."
 echo "Inspect the LiDAR alignment before autonomous movement starts."
@@ -143,6 +130,12 @@ ros2 run roborock_s5max cleaning_actuator_manager.py --ros-args \
     --params-file /ws/install/roborock_s5max/share/roborock_s5max/config/coverage.yaml &
 actuator_pid=$!
 
+if ! timeout 10 ros2 service call /s5max_cleaning_actuators/start \
+        std_srvs/srv/Trigger '{}' | grep -q 'success=True'; then
+    echo "ERROR: The cleaning actuators did not start." >&2
+    exit 1
+fi
+
 ros2 run oomwoo_coverage coverage_planner --ros-args \
     --params-file /ws/install/roborock_s5max/share/roborock_s5max/config/coverage.yaml \
     -r cmd_vel:=/cmd_vel_clean \
@@ -151,12 +144,36 @@ ros2 run oomwoo_coverage coverage_planner --ros-args \
 planner_pid=$!
 
 echo "Coverage started. Contact recovery can override and release the route."
-echo "Close RViz or press Ctrl-C to stop all actuators and restore Valetudo."
+echo "Successful coverage will return the robot to its mapped dock."
+echo "Close RViz or press Ctrl-C to stop without an automatic dock return."
 
+completed_pid=""
 session_status=0
-wait -n "$launch_pid" "$planner_pid" "$actuator_pid" "$rviz_pid" || \
+wait -n -p completed_pid \
+    "$launch_pid" "$planner_pid" "$actuator_pid" "$rviz_pid" || \
     session_status=$?
-if [ "$session_status" -ne 0 ]; then
+if [ "$completed_pid" != "$actuator_pid" ]; then
+    echo "Coverage did not report successful completion. Dock return is disabled." >&2
+    if [ "$session_status" -eq 0 ]; then
+        session_status=1
+    fi
+elif [ "$session_status" -ne 0 ]; then
     echo "A coverage process stopped with status $session_status." >&2
+else
+    echo "Coverage completed. Stopping cleaning before the dock return."
+    stop_process "$planner_pid"
+    planner_pid=""
+    stop_process "$pilot_pid"
+    pilot_pid=""
+    stop_process "$joy_pid"
+    joy_pid=""
+    stop_process "$actuator_pid"
+    actuator_pid=""
+
+    echo "Starting the Nav2 dock action."
+    ros2 run roborock_s5max dock_robot.py \
+        --path "/maps/${MAP_NAME}.dock.json" --map-name "$MAP_NAME" \
+        --server-timeout 30 --staging-timeout 300 --operation-timeout 420
+    echo "Coverage finished. The robot is docked and charging."
 fi
 exit "$session_status"

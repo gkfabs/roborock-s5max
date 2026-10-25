@@ -21,6 +21,9 @@ coverage_planner:
     max_gapfill: 0
     contact_aware_escape: false
     max_escapes: 0
+    external_contact_recovery_topic: /contact_reflex/active
+    external_contact_avoid_radius: 0.30
+    max_external_contact_recoveries: 25
 
 s5max_cleaning_actuators:
   ros__parameters:

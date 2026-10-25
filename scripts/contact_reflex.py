@@ -45,6 +45,7 @@ class ContactRecovery:
         self,
         stop_seconds=0.10,
         backup_seconds=0.60,
+        backup_hard_limit_seconds=2.50,
         turn_seconds=0.60,
         settle_seconds=0.10,
         backup_speed=-0.05,
@@ -52,6 +53,8 @@ class ContactRecovery:
     ):
         self.stop_seconds = float(stop_seconds)
         self.backup_seconds = float(backup_seconds)
+        self.backup_hard_limit_seconds = max(
+            self.backup_seconds, float(backup_hard_limit_seconds))
         self.turn_seconds = float(turn_seconds)
         self.settle_seconds = float(settle_seconds)
         self.backup_speed = -abs(float(backup_speed))
@@ -84,17 +87,23 @@ class ContactRecovery:
 
         elapsed = max(0.0, float(now) - self.started_at)
         backup_end = self.stop_seconds + self.backup_seconds
+        backup_hard_end = self.stop_seconds + self.backup_hard_limit_seconds
         turn_end = backup_end + self.turn_seconds
         settle_end = turn_end + self.settle_seconds
 
         if elapsed < self.stop_seconds:
             self.state = STOP
             return RecoveryCommand(True, 0.0, 0.0, STOP)
-        if elapsed < backup_end:
+        if elapsed < backup_end or (
+            (self.left or self.right) and elapsed < backup_hard_end
+        ):
             self.state = BACKUP
             return RecoveryCommand(
                 True, self.backup_speed, 0.0, BACKUP
             )
+        if self.left or self.right:
+            self.state = LOCKOUT
+            return RecoveryCommand(True, 0.0, 0.0, LOCKOUT)
         if elapsed < turn_end:
             self.state = TURN
             return RecoveryCommand(
@@ -111,6 +120,10 @@ class ContactRecovery:
         self.state = IDLE
         self.started_at = None
         return RecoveryCommand(False, 0.0, 0.0, IDLE)
+
+    def cancel(self):
+        self.state = IDLE
+        self.started_at = None
 
     def _start(self, now):
         self.started_at = float(now)
@@ -129,7 +142,8 @@ class ContactReflex(Node):
         super().__init__('s5max_contact_reflex')
         self.declare_parameter('publish_rate_hz', 20.0)
         self.declare_parameter('stop_seconds', 0.10)
-        self.declare_parameter('backup_seconds', 0.60)
+        self.declare_parameter('backup_seconds', 1.50)
+        self.declare_parameter('backup_hard_limit_seconds', 2.50)
         self.declare_parameter('turn_seconds', 0.60)
         self.declare_parameter('settle_seconds', 0.10)
         self.declare_parameter('backup_speed', -0.05)
@@ -140,6 +154,8 @@ class ContactReflex(Node):
         self.recovery = ContactRecovery(
             stop_seconds=self._parameter('stop_seconds'),
             backup_seconds=self._parameter('backup_seconds'),
+            backup_hard_limit_seconds=self._parameter(
+                'backup_hard_limit_seconds'),
             turn_seconds=self._parameter('turn_seconds'),
             settle_seconds=self._parameter('settle_seconds'),
             backup_speed=self._parameter('backup_speed'),
@@ -163,10 +179,14 @@ class ContactReflex(Node):
         self.create_subscription(
             Twist, '/cmd_vel', self.on_drive_command, 10
         )
+        self.create_subscription(
+            Bool, '/contact_reflex/inhibit', self.on_inhibit, state_qos()
+        )
 
         self.left = False
         self.right = False
         self.last_forward_command = None
+        self.inhibited = False
         self.command_fresh_seconds = self._parameter(
             'command_fresh_seconds'
         )
@@ -188,14 +208,20 @@ class ContactReflex(Node):
         self.left = bool(message.data)
         now = self._now()
         self.recovery.update_contacts(
-            self.left, self.right, now, self._forward_is_active(now)
+            self.left,
+            self.right,
+            now,
+            self._forward_is_active(now) and not self.inhibited,
         )
 
     def on_right(self, message):
         self.right = bool(message.data)
         now = self._now()
         self.recovery.update_contacts(
-            self.left, self.right, now, self._forward_is_active(now)
+            self.left,
+            self.right,
+            now,
+            self._forward_is_active(now) and not self.inhibited,
         )
 
     def on_drive_command(self, message):
@@ -203,7 +229,25 @@ class ContactReflex(Node):
             now = self._now()
             self.last_forward_command = now
             self.recovery.update_contacts(
-                self.left, self.right, now, allow_start=True
+                self.left,
+                self.right,
+                now,
+                allow_start=not self.inhibited,
+            )
+
+    def on_inhibit(self, message):
+        was_inhibited = self.inhibited
+        self.inhibited = bool(message.data)
+        if self.inhibited:
+            self.recovery.cancel()
+            return
+        if was_inhibited:
+            now = self._now()
+            self.recovery.update_contacts(
+                self.left,
+                self.right,
+                now,
+                allow_start=self._forward_is_active(now),
             )
 
     def _forward_is_active(self, now):
