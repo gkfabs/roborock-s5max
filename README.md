@@ -108,7 +108,7 @@ make back2dock NAME=apartment
 The command starts localization and shows RViz. Make sure that the live scan
 aligns with the map. Use `2D Pose Estimate` if the pose is wrong. Type `dock`
 in the terminal after the pose is correct. Nav2 travels to the saved staging
-pose. The beacon controller makes the final approach and confirms charging.
+pose. OpenNav Docking makes the final approach and confirms charging.
 
 The first ROS command builds `roborock_s5max_ros:latest` from
 `oomwoo_one:latest`.
@@ -154,20 +154,56 @@ make coverage NAME=apartment
 
 RViz starts before autonomous movement. Make sure that the robot pose and LiDAR scan align with the map. Then type `clean` in the terminal.
 
-The OOMWOO reactive executor controls short cleaning rows. Nav2 controls longer travel between rows. The contact reflex overrides both sources during a bumper recovery. It releases control after the reverse and turn sequence.
+The OOMWOO reactive executor controls short cleaning rows. Nav2 controls longer travel between rows. The contact reflex overrides both sources during a bumper recovery. It releases control after the reverse and turn sequence. OOMWOO records the contact point and continues past the blocked segment without sending another reverse command.
 
-The cleaning actuator manager starts the fan and both brushes when coverage starts. It stops all cleaning actuators when coverage ends or the session stops. A joystick can override the route when it is connected.
+The cleaning actuator manager starts the fan and both brushes when coverage starts. It stops all cleaning actuators when coverage ends or the session stops.
+
+After successful coverage, the robot sends one Nav2 `DockRobot` action. OpenNav Docking controls staging, final alignment, contact, retries, and charge confirmation.
+
+The S5 Max dock-pose estimator combines the LiDAR dock face with the infrared beacon. It publishes the final robot pose in the `odom` frame.
+
+A joystick can override the route when it is connected.
 
 Use `ROBOT_IP`, `ROS_IMAGE`, `BRIDGE_REPO`, `MAP_DIR`, and `DEMO_SECONDS` to change the local environment.
 The bounded takeover programs are in `scripts/`.
+
+Run the OpenNav Docking test with the Gazebo window:
+
+```bash
+make dock-sim
+```
+
+Run the same test without the Gazebo window:
+
+```bash
+make dock-sim-headless
+```
+
+Run all docking scenarios:
+
+```bash
+make dock-sim-matrix
+```
+
+Run temporary LiDAR loss during each OpenNav Docking state:
+
+```bash
+make dock-sim-lidar-outage-matrix
+```
+
+Gazebo supplies LiDAR, odometry, dock contact, and charging data. All tests use one launch file and one runner. They use the same estimator, dock plugin, and Docking Server configuration as the robot.
 
 ## Current limits
 
 The wheel, caster, and LiDAR positions are temporary. Calibrate them before navigation tests.
 
-The coverage command can automatically undock. It does not yet call the tested
-return-to-dock command when coverage ends.
+The coverage command requires a saved dock staging pose. It automatically
+returns only after the coverage planner reports successful completion.
 
-The contact recovery does not yet record contact in the OOMWOO tactile map. The coverage executor resumes the current route after the bounded recovery.
+Contact recovery records a temporary no-go pocket in the OOMWOO coverage route. A run stops after 25 contact recoveries instead of continuing without a bound.
 
-Gazebo, complete cleaning, mopping, and docking remain later milestones.
+The docking matrix covers centered, lateral-offset, heading-error, beacon-loss, missed-contact, delayed-charging, and dock-undock-cycle scenarios.
+
+The dock-undock-cycle scenario docks the robot, disables charging, and returns the robot to the staging pose.
+
+Complete mopping and unattended recovery from a failed cleaning run remain later milestones.
