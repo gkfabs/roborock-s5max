@@ -3,6 +3,8 @@ Panels:
     Name: Displays
   - Class: rviz_common/Views
     Name: Views
+  - Class: nav2_rviz_plugins/Docking
+    Name: Docking
 Visualization Manager:
   Class: ""
   Displays:
@@ -46,6 +48,34 @@ Visualization Manager:
         Value: Arrow
       Topic:
         Value: /odom
+    - Class: rviz_default_plugins/Pose
+      Enabled: true
+      Name: Detected dock pose
+      Shape: Arrow
+      Color: 255; 85; 0
+      Topic:
+        Value: /detected_dock_pose
+    - Class: rviz_default_plugins/Pose
+      Enabled: true
+      Name: Filtered dock pose
+      Shape: Arrow
+      Color: 255; 255; 0
+      Topic:
+        Value: /filtered_dock_pose
+    - Class: rviz_default_plugins/Pose
+      Enabled: true
+      Name: OpenNav dock target
+      Shape: Arrow
+      Color: 0; 255; 0
+      Topic:
+        Value: /dock_pose
+    - Class: rviz_default_plugins/Pose
+      Enabled: true
+      Name: OpenNav staging pose
+      Shape: Arrow
+      Color: 0; 170; 255
+      Topic:
+        Value: /staging_pose
   Enabled: true
   Global Options:
     Background Color: 30; 30; 30

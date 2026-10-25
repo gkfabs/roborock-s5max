@@ -3,6 +3,8 @@ Panels:
     Name: Displays
   - Class: nav2_rviz_plugins/Navigation 2
     Name: Navigation 2
+  - Class: nav2_rviz_plugins/Docking
+    Name: Docking
 Visualization Manager:
   Class: ""
   Displays:
@@ -78,6 +80,34 @@ Visualization Manager:
       Name: Local plan
       Topic:
         Value: /local_plan
+    - Class: rviz_default_plugins/Pose
+      Enabled: true
+      Name: Detected dock pose
+      Shape: Arrow
+      Color: 255; 85; 0
+      Topic:
+        Value: /detected_dock_pose
+    - Class: rviz_default_plugins/Pose
+      Enabled: true
+      Name: Filtered dock pose
+      Shape: Arrow
+      Color: 255; 255; 0
+      Topic:
+        Value: /filtered_dock_pose
+    - Class: rviz_default_plugins/Pose
+      Enabled: true
+      Name: OpenNav dock target
+      Shape: Arrow
+      Color: 0; 255; 0
+      Topic:
+        Value: /dock_pose
+    - Class: rviz_default_plugins/Pose
+      Enabled: true
+      Name: OpenNav staging pose
+      Shape: Arrow
+      Color: 0; 170; 255
+      Topic:
+        Value: /staging_pose
     - Class: rviz_default_plugins/Path
       Enabled: true
       Name: Coverage plan

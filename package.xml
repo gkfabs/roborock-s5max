@@ -10,13 +10,27 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
+  <depend>nav2_util</depend>
+  <depend>opennav_docking</depend>
+  <depend>opennav_docking_core</depend>
+  <depend>pluginlib</depend>
+  <depend>rclcpp</depend>
+  <depend>rclcpp_lifecycle</depend>
+  <depend>std_msgs</depend>
+  <depend>vacuum_ros2_bridge</depend>
+
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>action_msgs</exec_depend>
   <exec_depend>joint_state_publisher</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>lifecycle_msgs</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>ros_gz_bridge</exec_depend>
+  <exec_depend>ros_gz_sim</exec_depend>
+  <exec_depend>rosgraph_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>nav2_msgs</exec_depend>
   <exec_depend>nav2_map_server</exec_depend>
   <exec_depend>nav2_behaviors</exec_depend>
@@ -29,23 +43,22 @@
   <exec_depend>nav2_rviz_plugins</exec_depend>
   <exec_depend>nav2_smoother</exec_depend>
   <exec_depend>oomwoo_coverage</exec_depend>
+  <exec_depend>oomwoo_msgs</exec_depend>
   <exec_depend>python3-yaml</exec_depend>
   <exec_depend>dwb_core</exec_depend>
-  <exec_depend>oomwoo_dock</exec_depend>
   <exec_depend>rclpy</exec_depend>
   <exec_depend>robot_state_publisher</exec_depend>
   <exec_depend>rviz2</exec_depend>
   <exec_depend>slam_toolbox</exec_depend>
-  <exec_depend>std_msgs</exec_depend>
   <exec_depend>std_srvs</exec_depend>
   <exec_depend>tf2_ros</exec_depend>
   <exec_depend>twist_mux</exec_depend>
-  <exec_depend>vacuum_ros2_bridge</exec_depend>
   <exec_depend>xacro</exec_depend>
 
   <test_depend>ament_cmake_pytest</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
+    <opennav_docking plugin="${prefix}/s5max_dock_plugins.xml" />
   </export>
 </package>

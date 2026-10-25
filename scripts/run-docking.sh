@@ -8,6 +8,7 @@ ROS_WORKSPACE="${ROS_WORKSPACE:-/tmp/s5_ros_ws}"
 BRIDGE_REPO="${BRIDGE_REPO:?BRIDGE_REPO is required}"
 ROBOT_DESCRIPTION_REPO="${ROBOT_DESCRIPTION_REPO:?ROBOT_DESCRIPTION_REPO is required}"
 DEMO_SECONDS="${DEMO_SECONDS:-1800}"
+ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-55}"
 MAP_DIR="${MAP_DIR:?MAP_DIR is required}"
 NAME="${NAME:-}"
 DOCK_MODE="${DOCK_MODE:?DOCK_MODE is required}"
@@ -68,6 +69,7 @@ docker run --rm -i --name "$CONTAINER" --network host \
     -e HOME=/tmp \
     -e QT_X11_NO_MITSHM=1 \
     -e LIBGL_ALWAYS_SOFTWARE=1 \
+    -e ROS_DOMAIN_ID="$ROS_DOMAIN_ID" \
     -e ROBOT_IP="$ROBOT_IP" \
     -e MAP_NAME="$NAME" \
     -e DOCK_MODE="$DOCK_MODE" \

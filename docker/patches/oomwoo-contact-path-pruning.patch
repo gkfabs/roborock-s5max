@@ -1,0 +1,85 @@
+diff --git a/src/oomwoo_coverage/oomwoo_coverage/coverage_planner_node.py b/src/oomwoo_coverage/oomwoo_coverage/coverage_planner_node.py
+index ab64dce..97d5d72 100755
+--- a/src/oomwoo_coverage/oomwoo_coverage/coverage_planner_node.py
++++ b/src/oomwoo_coverage/oomwoo_coverage/coverage_planner_node.py
+@@ -359,6 +359,15 @@ class CoveragePlanner(Node):
+         if self._in_wedge_zone(pose):
+             return True
++        if self.robot_xy is not None and self.wedge_zones:
++            tx = pose.pose.position.x
++            ty = pose.pose.position.y
++            rx, ry = self.robot_xy
++            path_zones = [
++                (cx, cy, min(radius, self.robot_radius))
++                for cx, cy, radius in self.wedge_zones
++            ]
++            if _segment_intersects_zones(rx, ry, tx, ty, path_zones):
++                return True
+         return False
+ 
+     def _covered_at(self, pose) -> bool:
+@@ -1165,6 +1174,27 @@ def _pt_in_zones(x: float, y: float, zones) -> bool:
+     return False
+ 
+ 
++def _segment_intersects_zones(x1: float, y1: float, x2: float, y2: float,
++                              zones) -> bool:
++    """Return True when a line segment crosses a no-go circle."""
++    dx = x2 - x1
++    dy = y2 - y1
++    length_sq = dx * dx + dy * dy
++    for cx, cy, radius in zones:
++        if length_sq == 0.0:
++            nearest_x, nearest_y = x1, y1
++        else:
++            projection = ((cx - x1) * dx + (cy - y1) * dy) / length_sq
++            projection = max(0.0, min(1.0, projection))
++            nearest_x = x1 + projection * dx
++            nearest_y = y1 + projection * dy
++        distance_sq = ((nearest_x - cx) ** 2
++                       + (nearest_y - cy) ** 2)
++        if distance_sq <= radius * radius:
++            return True
++    return False
++
++
+ def _contiguous_runs(cols: np.ndarray) -> List[np.ndarray]:
+     """Split a sorted 1-D index array into contiguous runs."""
+     if cols.size == 0:
+diff --git a/src/oomwoo_coverage/test/test_planner_geometry.py b/src/oomwoo_coverage/test/test_planner_geometry.py
+index b4208e2..0ad035e 100644
+--- a/src/oomwoo_coverage/test/test_planner_geometry.py
++++ b/src/oomwoo_coverage/test/test_planner_geometry.py
+@@ -22,6 +22,7 @@ from oomwoo_coverage.coverage_planner_node import (
+     _flood_fill,
+     _nearest_true,
+     _pt_in_zones,
++    _segment_intersects_zones,
+ )
+ 
+ 
+@@ -36,6 +37,22 @@ def test_pt_in_zones_boundary_is_inclusive():
+     assert _pt_in_zones(0.35, 0.0, [(0.0, 0.0, 0.35)])
+ 
+ 
++def test_segment_intersects_contact_pocket():
++    zones = [(1.0, 0.0, 0.2)]
++    assert _segment_intersects_zones(0.0, 0.0, 2.0, 0.0, zones)
++    assert _segment_intersects_zones(0.0, 0.0, 2.0, 0.2, zones)
++    assert not _segment_intersects_zones(0.0, 0.0, 2.0, 0.5, zones)
++
++
++def test_segment_ignores_contact_pocket_behind_robot():
++    zones = [(-1.0, 0.0, 0.2)]
++    assert not _segment_intersects_zones(0.0, 0.0, 2.0, 0.0, zones)
++
++
++def test_zero_length_segment_uses_point_distance():
++    zones = [(1.0, 1.0, 0.2)]
++    assert _segment_intersects_zones(1.0, 1.0, 1.0, 1.0, zones)
++    assert not _segment_intersects_zones(0.0, 0.0, 0.0, 0.0, zones)
++
++
+ def test_contiguous_runs_splits_on_gaps():
+     runs = _contiguous_runs(np.array([1, 2, 3, 7, 8, 12]))
+     assert [list(r) for r in runs] == [[1, 2, 3], [7, 8], [12]]

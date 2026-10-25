@@ -1,0 +1,10 @@
+<library path="s5max_charging_dock">
+  <class
+    name="roborock_s5max::S5MaxChargingDock"
+    type="roborock_s5max::S5MaxChargingDock"
+    base_class_type="opennav_docking_core::ChargingDock">
+    <description>
+      S5 Max charging and contact adapter for the Nav2 Docking Server.
+    </description>
+  </class>
+</library>

@@ -1,0 +1,140 @@
+diff --git a/src/oomwoo_coverage/oomwoo_coverage/coverage_planner_node.py b/src/oomwoo_coverage/oomwoo_coverage/coverage_planner_node.py
+index 006124e..ab64dce 100755
+--- a/src/oomwoo_coverage/oomwoo_coverage/coverage_planner_node.py
++++ b/src/oomwoo_coverage/oomwoo_coverage/coverage_planner_node.py
+@@ -65,7 +65,7 @@ from rclpy.qos import (
+ 
+ from ros_gz_interfaces.msg import Contacts
+ 
+-from std_msgs.msg import Bool, Float32
++from std_msgs.msg import Bool, Float32, String
+ 
+ from tf2_ros import Buffer, TransformException, TransformListener
+ 
+@@ -227,6 +227,19 @@ class CoveragePlanner(Node):
+         self.max_escapes = self.get_parameter('max_escapes').value
+         self.wedge_zones = []        # [(x, y, r), ...] world-frame no-go pockets
+         self.escapes_done = 0
++        # A robot adapter can own the physical reverse and report its active
++        # state here. The planner then records the contact and skips the blocked
++        # segment without issuing a second escape command.
++        self.declare_parameter('external_contact_recovery_topic', '')
++        self.declare_parameter('external_contact_avoid_radius', 0.30)
++        self.declare_parameter('max_external_contact_recoveries', 25)
++        self.external_recovery_topic = self.get_parameter(
++            'external_contact_recovery_topic').value
++        self.external_contact_avoid_radius = self.get_parameter(
++            'external_contact_avoid_radius').value
++        self.max_external_recoveries = self.get_parameter(
++            'max_external_contact_recoveries').value
++        self.external_recovery_active = False
++        self.external_recoveries_done = 0
++        self._external_skip_index = None
++        self._external_cancel_pending = False
+ 
+         # --- ROS plumbing -------------------------------------------------
+@@ -251,6 +264,14 @@ class CoveragePlanner(Node):
+ 
+         self.active_pub = self.create_publisher(
+             Bool, '~/cleaning_active', latched_qos())
++        self.result_pub = self.create_publisher(
++            String, '~/result', latched_qos())
++        if self.external_recovery_topic:
++            self.create_subscription(
++                Bool,
++                self.external_recovery_topic,
++                self._external_recovery_cb,
++                latched_qos(),
++            )
+         # the full boustrophedon plan, for RViz — add a Path display on
+@@ -635,6 +656,7 @@ class CoveragePlanner(Node):
+             f'coverage complete: {self.ext_ratio:.1%} covered')
+         self.finished = True
+         self.active_pub.publish(Bool(data=False))
++        self.result_pub.publish(String(data='succeeded'))
+         return False
+@@ -733,6 +733,9 @@ class CoveragePlanner(Node):
+         if self.finished:
+             return
++        if self._external_cancel_pending:
++            self._external_cancel_pending = False
++            return
+         if status == 4:                 # reached the waypoint
+@@ -795,6 +820,58 @@ class CoveragePlanner(Node):
+     def _elapsed(self, t) -> float:
+         return (self.get_clock().now() - t).nanoseconds * 1e-9
+ 
++    def _external_recovery_cb(self, msg: Bool) -> None:
++        active = bool(msg.data)
++        if active == self.external_recovery_active:
++            return
++        self.external_recovery_active = active
++        if active:
++            self.external_recoveries_done += 1
++            if self.external_recoveries_done > self.max_external_recoveries:
++                self._fail_job('external contact recovery limit reached')
++                return
++            pose = self._robot_pose()
++            if pose is not None:
++                rx, ry, yaw = pose
++                distance = self.robot_radius
++                cx = rx + float(np.cos(yaw)) * distance
++                cy = ry + float(np.sin(yaw)) * distance
++                if not _pt_in_zones(cx, cy, self.wedge_zones):
++                    self.wedge_zones.append(
++                        (cx, cy, self.external_contact_avoid_radius))
++            if self.cached_poses is not None \
++                    and self.wp_index < len(self.cached_poses):
++                self._external_skip_index = self.wp_index
++            if self.goal_handle is not None:
++                self._external_cancel_pending = True
++                self.goal_handle.cancel_goal_async()
++            elif self.awaiting:
++                self.cancel_on_accept = True
++            self.cmd_pub.publish(Twist())
++            self.get_logger().warn(
++                'external contact recovery active: contact pocket recorded')
++            return
++
++        if self.finished:
++            return
++        if self._external_skip_index is not None \
++                and self.wp_index == self._external_skip_index:
++            self.wp_index += 1
++        self._external_skip_index = None
++        self.awaiting = False
++        self.goal_handle = None
++        self.goal_deadline = None
++        self.wp_retries = 0
++        self.consecutive_skips = 0
++        self._drive_best_dist = None
++        self.next_send = self.get_clock().now()
++        self.get_logger().info(
++            'external contact recovery complete: continuing past contact')
++
++    def _fail_job(self, reason: str) -> None:
++        self.get_logger().error(f'coverage failed: {reason}')
++        self.finished = True
++        self.cmd_pub.publish(Twist())
++        self.active_pub.publish(Bool(data=False))
++        self.result_pub.publish(String(data=f'failed: {reason}'))
++        if self.goal_handle is not None:
++            self.goal_handle.cancel_goal_async()
++
+     # -------------------------------------------------------------- ticking
+     def _tick(self) -> None:
+@@ -812,6 +812,7 @@ class CoveragePlanner(Node):
+             self.get_logger().info(
+                 f'coverage target {self.coverage_target:.0%} reached '
+                 f'({ratio:.1%}); stopping (stop_at_target=true)')
++            self.result_pub.publish(String(data='succeeded'))
+             self.finished = True
+             self.active_pub.publish(Bool(data=False))
+@@ -827,6 +904,8 @@ class CoveragePlanner(Node):
+             return
+         if self.finished:
+             return
++        if self.external_recovery_active:
++            return
+ 
+         if not self.plan_started:

@@ -36,3 +36,41 @@ def test_right_receiver_only_places_beacon_to_robot_right():
     visible, bearing = decode(0x00, 0x15)
     assert visible
     assert bearing < 0.0
+
+
+def test_rich_signal_preserves_all_five_classes_and_masks():
+    signal = MODULE.decode_signal(0x15, 0x1A, 0.5)
+
+    assert signal.left_mask == 0x15
+    assert signal.right_mask == 0x1A
+    assert signal.visible
+    assert signal.bearing == 0.0
+    assert signal.confidence == 1.0
+    assert signal.far_left
+    assert signal.far_right
+    assert signal.close_left
+    assert signal.close_right
+    assert signal.center
+
+
+def test_rich_signal_reports_one_receiver_as_half_confidence():
+    signal = MODULE.decode_signal(0x00, 0x15, 0.5)
+
+    assert signal.visible
+    assert signal.bearing == -0.5
+    assert signal.confidence == 0.5
+    assert signal.far_left
+    assert not signal.far_right
+    assert signal.close_left
+    assert not signal.close_right
+    assert signal.center
+
+
+def test_rich_signal_removes_bits_outside_the_five_signal_classes():
+    signal = MODULE.decode_signal(0xE0, 0x80, 0.5)
+
+    assert signal.left_mask == 0
+    assert signal.right_mask == 0
+    assert not signal.visible
+    assert signal.bearing is None
+    assert signal.confidence == 0.0

@@ -1,0 +1,69 @@
+docking_server:
+  ros__parameters:
+    controller_frequency: 20.0
+    initial_perception_timeout: 10.0
+    wait_charge_timeout: 12.0
+    dock_approach_timeout: 60.0
+    max_retries: 2
+    base_frame: base_footprint
+    fixed_frame: odom
+    dock_backwards: false
+    dock_prestaging_tolerance: 0.10
+    dock_plugins: [s5max]
+
+    s5max:
+      plugin: roborock_s5max::S5MaxChargingDock
+      use_external_detection_pose: true
+      external_detection_timeout: 1.0
+      external_detection_translation_x: 0.0
+      external_detection_translation_y: 0.0
+      external_detection_rotation_roll: 0.0
+      external_detection_rotation_pitch: 0.0
+      external_detection_rotation_yaw: 0.0
+      filter_coef: 0.25
+      use_battery_status: false
+      use_stall_detection: false
+      docking_threshold: 0.015
+      staging_x_offset: -0.140
+      staging_yaw_offset: 0.0
+      status_timeout_sec: 0.5
+      charger_speed: 1
+
+    controller:
+      k_phi: 8.0
+      k_delta: 6.0
+      beta: 0.4
+      lambda: 2.0
+      v_linear_min: 0.025
+      v_linear_max: 0.040
+      v_angular_max: 0.50
+      slowdown_radius: 0.30
+      rotate_to_heading_angular_vel: 0.25
+      rotate_to_heading_max_angular_accel: 0.5
+      use_collision_detection: true
+      costmap_topic: local_costmap/costmap_raw
+      footprint_topic: local_costmap/published_footprint
+      transform_tolerance: 0.2
+      projection_time: 1.0
+      simulation_time_step: 0.1
+      dock_collision_threshold: 0.30
+
+s5max_dock_pose_estimator:
+  ros__parameters:
+    scan_topic: /scan
+    pose_topic: /detected_dock_pose
+    dock_protrusion_m: 0.040
+    contact_offset_m: 0.1765
+    scan_translation_x_m: 0.060
+    scan_translation_y_m: 0.0
+    scan_rotation_yaw_rad: 0.0
+    beacon_timeout_sec: 0.35
+    odometry_timeout_sec: 0.25
+    hold_timeout_sec: 10.0
+    minimum_samples: 3
+    sample_window: 5
+    maximum_position_spread_m: 0.10
+    maximum_yaw_spread_rad: 0.20
+    maximum_pose_jump_m: 0.18
+    maximum_beacon_error_rad: 0.75
+    final_pose_lock_distance_m: 0.45

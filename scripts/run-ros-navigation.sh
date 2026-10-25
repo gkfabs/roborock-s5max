@@ -106,7 +106,7 @@ if [ "${lidar_status:-0}" -ne 0 ] && [ "${lidar_status:-0}" -ne 124 ]; then
     exit 1
 fi
 
-echo "Waiting for LiDAR, odometry, localization, and Nav2..."
+echo "Waiting for LiDAR, odometry, and localization..."
 if ! timeout 15 ros2 topic echo --once /scan >/dev/null 2>&1; then
     echo "ERROR: Automatic undocking or LiDAR startup did not produce a scan." >&2
     exit 1
@@ -117,23 +117,6 @@ if ! timeout 5 ros2 topic echo --once /odom >/dev/null 2>&1; then
 fi
 if ! timeout 30 ros2 topic echo --once /map >/dev/null 2>&1; then
     echo "ERROR: SLAM Toolbox did not publish the saved map." >&2
-    exit 1
-fi
-
-nav2_ready=false
-for _ in $(seq 1 30); do
-    if ros2 lifecycle get /controller_server 2>/dev/null | \
-            grep -q 'active'; then
-        nav2_ready=true
-        break
-    fi
-    if ! kill -0 "$launch_pid" 2>/dev/null; then
-        wait "$launch_pid"
-    fi
-    sleep 1
-done
-if [ "$nav2_ready" != true ]; then
-    echo "ERROR: Nav2 did not become active." >&2
     exit 1
 fi
 

@@ -9,11 +9,26 @@ RUN apt-get update && \
         python3-scipy \
         ros-jazzy-navigation2 \
         ros-jazzy-nav2-bringup \
+        ros-jazzy-opennav-docking \
         ros-jazzy-ros-gz-interfaces \
         ros-jazzy-slam-toolbox && \
     rm -rf /var/lib/apt/lists/* && \
     git clone --filter=blob:none --no-checkout \
         https://github.com/makerspet/oomwoo-ros2-tools.git \
         /opt/oomwoo-ros2-tools && \
-    git -C /opt/oomwoo-ros2-tools checkout "$OOMWOO_TOOLS_REV" && \
+    git -C /opt/oomwoo-ros2-tools checkout "$OOMWOO_TOOLS_REV"
+
+COPY docker/patches/oomwoo-external-contact-recovery.patch /tmp/
+COPY docker/patches/oomwoo-contact-path-pruning.patch /tmp/
+COPY docker/patches/oomwoo-dock-signal-message.patch /tmp/
+
+RUN git -C /opt/oomwoo-ros2-tools apply --recount \
+        /tmp/oomwoo-external-contact-recovery.patch && \
+    git -C /opt/oomwoo-ros2-tools apply --recount \
+        /tmp/oomwoo-contact-path-pruning.patch && \
+    git -C /opt/oomwoo-ros2-tools apply --recount \
+        /tmp/oomwoo-dock-signal-message.patch && \
+    rm /tmp/oomwoo-external-contact-recovery.patch \
+        /tmp/oomwoo-contact-path-pruning.patch \
+        /tmp/oomwoo-dock-signal-message.patch && \
     rm -rf /opt/oomwoo-ros2-tools/.git

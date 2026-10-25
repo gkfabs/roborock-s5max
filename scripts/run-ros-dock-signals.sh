@@ -7,13 +7,17 @@ source /ws/install/setup.bash
 set -u
 
 launch_pid=""
+docking_pid=""
 UNDOCK="${UNDOCK:-0}"
 REDOCK="${REDOCK:-0}"
-REDOCK_MAX_DISTANCE="${REDOCK_MAX_DISTANCE:-0.20}"
 
 cleanup()
 {
     trap - EXIT INT TERM
+    if [ -n "$docking_pid" ]; then
+        kill -INT "$docking_pid" 2>/dev/null || true
+        wait "$docking_pid" 2>/dev/null || true
+    fi
     if [ "$UNDOCK" = 1 ]; then
         timeout 5 ros2 service call /set_lidar vacuum_ros2_bridge/srv/SetLidar \
             '{enable: false}' >/dev/null 2>&1 || true
@@ -102,8 +106,11 @@ if ! timeout 15 ros2 topic echo --once /dock_ir; then
 fi
 
 if [ "$REDOCK" = 1 ]; then
-    echo "Starting the bounded final dock approach."
-    timeout 30 ros2 run roborock_s5max dock_final_approach.py --ros-args \
-        -p maximum_distance:="$REDOCK_MAX_DISTANCE" \
-        -p approach_timeout_sec:=15.0
+    echo "Starting the Nav2 dock action."
+    ros2 launch roborock_s5max docking_server.launch.py &
+    docking_pid=$!
+    ros2 run roborock_s5max dock_robot.py \
+        --dock-x 0.0 --dock-y 0.0 --dock-yaw 0.0 \
+        --dock-frame odom --skip-staging \
+        --server-timeout 20 --operation-timeout 45
 fi

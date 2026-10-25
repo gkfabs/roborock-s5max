@@ -37,6 +37,7 @@ def generate_launch_description():
             'lidar_frame_id': 'base_scan',
             'publish_tf': 'true',
             'undock_before_lidar': 'true',
+            'undock_timeout_sec': '20.0',
             'scan_time_offset': '0.0',
             'scan_mask_deg': '',
         }.items(),

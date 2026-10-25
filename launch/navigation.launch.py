@@ -16,6 +16,9 @@ from launch.actions import (
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
+
+
 def make_localization(context, package_path, slam_launch, posegraph_path,
                       start_pose_path, use_sim_time):
     pose_path = context.perform_substitution(start_pose_path)
@@ -74,8 +77,10 @@ def generate_launch_description():
     posegraph_path = LaunchConfiguration('posegraph_path')
     start_pose_path = LaunchConfiguration('start_pose_path')
     use_sim_time = LaunchConfiguration('use_sim_time')
+    autostart = LaunchConfiguration('autostart')
 
     navigation_params = str(package_path / 'config' / 'navigation.yaml')
+    docking_params = str(package_path / 'config' / 'docking.yaml')
     common_parameters = [
         navigation_params,
         {'use_sim_time': use_sim_time},
@@ -149,19 +154,37 @@ def generate_launch_description():
         parameters=common_parameters,
         remappings=transform_remappings,
     )
+    docking_server = Node(
+        package='opennav_docking',
+        executable='opennav_docking',
+        name='docking_server',
+        output='screen',
+        parameters=[docking_params, {'use_sim_time': use_sim_time}],
+        remappings=(
+            transform_remappings
+            + [('cmd_vel', 'cmd_vel_nav_raw')]
+        ),
+    )
+    dock_pose_estimator = Node(
+        package='roborock_s5max',
+        executable='dock_pose_estimator.py',
+        name='s5max_dock_pose_estimator',
+        output='screen',
+        parameters=[docking_params, {'use_sim_time': use_sim_time}],
+    )
     localization_pose_adapter = Node(
         package='roborock_s5max',
         executable='localization_pose_adapter.py',
         name='s5max_localization_pose_adapter',
         output='screen',
     )
-    lifecycle = Node(
+    navigation_lifecycle = Node(
         package='nav2_lifecycle_manager',
         executable='lifecycle_manager',
         name='lifecycle_manager_navigation',
         output='screen',
         parameters=[{
-            'autostart': True,
+            'autostart': ParameterValue(autostart, value_type=bool),
             'node_names': [
                 'controller_server',
                 'smoother_server',
@@ -170,6 +193,17 @@ def generate_launch_description():
                 'bt_navigator',
                 'collision_monitor',
             ],
+        }],
+    )
+    docking_lifecycle = Node(
+        package='nav2_lifecycle_manager',
+        executable='lifecycle_manager',
+        name='lifecycle_manager_docking',
+        output='screen',
+        parameters=[{
+            'autostart': ParameterValue(autostart, value_type=bool),
+            'node_names': ['docking_server'],
+            'use_sim_time': use_sim_time,
         }],
     )
 
@@ -199,6 +233,12 @@ def generate_launch_description():
             choices=['true', 'false'],
             description='Use the simulation clock.',
         ),
+        DeclareLaunchArgument(
+            'autostart',
+            default_value='true',
+            choices=['true', 'false'],
+            description='Activate the navigation and docking servers at launch.',
+        ),
         bringup,
         localization,
         controller,
@@ -206,7 +246,10 @@ def generate_launch_description():
         planner,
         behaviors,
         navigator,
+        docking_server,
+        dock_pose_estimator,
         localization_pose_adapter,
         collision_monitor,
-        lifecycle,
+        navigation_lifecycle,
+        docking_lifecycle,
     ])

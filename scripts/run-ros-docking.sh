@@ -10,9 +10,70 @@ launch_pid=""
 rviz_pid=""
 safety_stop_pid=""
 estimate_recorder_pid=""
-docked_success=false
 pending_path="/maps/.${MAP_NAME}.dock.json.pending"
 stage_path="/maps/${MAP_NAME}.dock.json"
+
+set_lidar()
+{
+    local enabled="$1"
+    local response
+    local status=0
+
+    response="$(
+        timeout 30 ros2 service call /set_lidar \
+            vacuum_ros2_bridge/srv/SetLidar "{enable: $enabled}" 2>&1
+    )" || status=$?
+    printf '%s\n' "$response"
+    if [ "$status" -ne 0 ]; then
+        return "$status"
+    fi
+    printf '%s\n' "$response" | grep -Eq \
+        'success[=:][[:space:]]*(True|true)'
+}
+
+start_lifecycle_group()
+{
+    local manager="$1"
+    local node="$2"
+    local response
+
+    if timeout 2 ros2 lifecycle get "/${node}" 2>/dev/null | \
+            grep -q '^active '; then
+        return 0
+    fi
+
+    for _ in $(seq 1 30); do
+        if ros2 service type "/${manager}/manage_nodes" 2>/dev/null | \
+                grep -q '^nav2_msgs/srv/ManageLifecycleNodes$'; then
+            break
+        fi
+        if ! kill -0 "$launch_pid" 2>/dev/null; then
+            wait "$launch_pid"
+        fi
+        sleep 1
+    done
+    if ! ros2 service type "/${manager}/manage_nodes" 2>/dev/null | \
+            grep -q '^nav2_msgs/srv/ManageLifecycleNodes$'; then
+        return 1
+    fi
+
+    response="$(
+        timeout 15 ros2 service call "/${manager}/manage_nodes" \
+            nav2_msgs/srv/ManageLifecycleNodes '{command: 0}' 2>&1
+    )" || {
+        printf '%s\n' "$response" >&2
+        return 1
+    }
+    for _ in $(seq 1 30); do
+        if timeout 2 ros2 lifecycle get "/${node}" 2>/dev/null | \
+                grep -q '^active '; then
+            return 0
+        fi
+        sleep 1
+    done
+    printf '%s\n' "$response" >&2
+    return 1
+}
 
 stop_process()
 {
@@ -45,10 +106,6 @@ cleanup()
     trap - EXIT INT TERM
     stop_process "$estimate_recorder_pid"
     rm -f "$pending_path"
-    if [ "$DOCK_MODE" = calibrate ] && [ "$docked_success" != true ]; then
-        echo "Calibration stopped. Trying the bounded recovery redock." >&2
-        timeout 20 ros2 run roborock_s5max dock_final_approach.py || true
-    fi
     timeout 8 ros2 topic pub -r 20 /cmd_vel_safety \
         geometry_msgs/msg/Twist '{}' >/dev/null 2>&1 &
     safety_stop_pid=$!
@@ -64,8 +121,12 @@ trap cleanup EXIT INT TERM
 ros2 launch roborock_s5max navigation.launch.py \
     robot_ip:="$ROBOT_IP" \
     posegraph_path:="/maps/${MAP_NAME}_serial" \
-    start_pose_path:="$stage_path" &
+    start_pose_path:="$stage_path" \
+    autostart:=false &
 launch_pid=$!
+
+rviz2 -d /ws/install/roborock_s5max/share/roborock_s5max/rviz/navigation.rviz &
+rviz_pid=$!
 
 for _ in $(seq 1 30); do
     if ros2 service type /set_lidar 2>/dev/null | \
@@ -84,28 +145,30 @@ if ! ros2 service type /set_lidar 2>/dev/null | \
     exit 1
 fi
 
-lidar_response="$(
-    timeout 10 ros2 service call /set_lidar vacuum_ros2_bridge/srv/SetLidar \
-        '{enable: true}' 2>&1
-)" || lidar_status=$?
-echo "$lidar_response"
-if [ "${lidar_status:-0}" -ne 0 ]; then
+echo "Starting the guarded undock and LiDAR sequence."
+if ! set_lidar true; then
     echo "ERROR: The automatic undock or LiDAR command failed." >&2
     exit 1
 fi
 
-echo "Waiting for LiDAR, localization, and Nav2."
+echo "Waiting for LiDAR and localization."
 if ! timeout 15 ros2 topic echo --once /scan >/dev/null 2>&1; then
     echo "No LiDAR scan arrived. Restarting the LiDAR once." >&2
     timeout 5 ros2 service call /set_lidar vacuum_ros2_bridge/srv/SetLidar \
         '{enable: false}' >/dev/null 2>&1 || true
     sleep 1
-    timeout 10 ros2 service call /set_lidar vacuum_ros2_bridge/srv/SetLidar \
-        '{enable: true}' >/dev/null
+    if ! set_lidar true; then
+        echo "ERROR: The LiDAR restart command failed." >&2
+        exit 1
+    fi
     if ! timeout 15 ros2 topic echo --once /scan >/dev/null 2>&1; then
         echo "ERROR: No LiDAR scan arrived after the retry." >&2
         exit 1
     fi
+fi
+if ! timeout 10 ros2 topic echo --once /odom >/dev/null 2>&1; then
+    echo "ERROR: No odometry data arrived." >&2
+    exit 1
 fi
 if ! timeout 30 ros2 topic echo --once /map >/dev/null 2>&1; then
     echo "ERROR: SLAM Toolbox did not publish the saved map." >&2
@@ -116,23 +179,19 @@ if ! timeout 15 ros2 topic echo --once /amcl_pose >/dev/null 2>&1; then
     exit 1
 fi
 
-nav2_ready=false
-for _ in $(seq 1 30); do
-    if ros2 lifecycle get /controller_server 2>/dev/null | grep -q 'active'; then
-        nav2_ready=true
-        break
-    fi
-    sleep 1
-done
-if [ "$nav2_ready" != true ]; then
-    echo "ERROR: Nav2 did not become active." >&2
-    exit 1
-fi
-
-rviz2 -d /ws/install/roborock_s5max/share/roborock_s5max/rviz/navigation.rviz &
-rviz_pid=$!
 echo "Make sure that the LiDAR scan aligns with the saved map."
 echo "If the pose is wrong, use 2D Pose Estimate."
+
+echo "Starting Nav2 after localization became ready."
+if ! start_lifecycle_group lifecycle_manager_navigation controller_server; then
+    echo "ERROR: Nav2 did not enter the active lifecycle state." >&2
+    exit 1
+fi
+if ! start_lifecycle_group lifecycle_manager_docking docking_server; then
+    echo "ERROR: The docking server did not enter the active lifecycle state." >&2
+    exit 1
+fi
+echo "The navigation and docking servers are active."
 
 if [ "$DOCK_MODE" = calibrate ]; then
     ros2 run roborock_s5max dock_stage.py watch-estimates \
@@ -162,17 +221,18 @@ else
         echo "The return to dock was canceled."
         exit 0
     fi
-    ros2 run roborock_s5max dock_stage.py navigate \
-        --path "$stage_path" --map-name "$MAP_NAME" \
-        --timeout 30 --travel-timeout 300 --near-distance 0.30 \
-        --approach-distance 0.20
-    sleep 1
 fi
 
-echo "Starting the beacon-guided final dock approach."
-ros2 run roborock_s5max dock_final_approach.py
-docked_success=true
+if [ "$DOCK_MODE" = calibrate ]; then
+    docking_path="$pending_path"
+else
+    docking_path="$stage_path"
+fi
 
+echo "Starting the Nav2 dock action."
+ros2 run roborock_s5max dock_robot.py \
+    --path "$docking_path" --map-name "$MAP_NAME" \
+    --server-timeout 30 --staging-timeout 300 --operation-timeout 420
 if [ "$DOCK_MODE" = calibrate ]; then
     mv "$pending_path" "$stage_path"
     echo "Saved dock staging pose: $stage_path"

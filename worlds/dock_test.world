@@ -1,0 +1,103 @@
+<?xml version="1.0"?>
+<sdf version="1.8">
+  <world name="default">
+    <physics type="ode">
+      <real_time_update_rate>400</real_time_update_rate>
+      <max_step_size>0.0025</max_step_size>
+      <real_time_factor>1</real_time_factor>
+    </physics>
+
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
+    <light type="directional" name="sun">
+      <cast_shadows>false</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.9 0.9 0.9 1</diffuse>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>4 4</size></plane></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>4 4</size></plane></geometry>
+        </visual>
+      </link>
+    </model>
+
+    <model name="corner_back_wall">
+      <static>true</static>
+      <pose>0.22 0 0.30 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.08 1.10 0.60</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.08 1.10 0.60</size></box></geometry>
+          <material><diffuse>0.75 0.72 0.68 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="corner_side_wall">
+      <static>true</static>
+      <pose>-0.25 -0.55 0.30 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>1.96 0.08 0.60</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>1.96 0.08 0.60</size></box></geometry>
+          <material><diffuse>0.75 0.72 0.68 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="s5max_dock">
+      <static>true</static>
+      <pose>0.17 0 0.0525 0 0 0</pose>
+      <link name="link">
+        <collision name="back_panel">
+          <geometry><box><size>0.06 0.15 0.105</size></box></geometry>
+        </collision>
+        <visual name="tower_body">
+          <geometry><box><size>0.06 0.15 0.105</size></box></geometry>
+          <material><diffuse>0.88 0.88 0.84 1</diffuse></material>
+        </visual>
+        <visual name="infrared_window">
+          <pose>-0.031 0 0.005 0 0 0</pose>
+          <geometry><box><size>0.004 0.132 0.075</size></box></geometry>
+          <material><diffuse>0.03 0.03 0.03 1</diffuse></material>
+        </visual>
+        <visual name="floor_base">
+          <pose>-0.12 0 -0.0485 0 0 0</pose>
+          <geometry><box><size>0.20 0.15 0.008</size></box></geometry>
+          <material><diffuse>0.88 0.88 0.84 1</diffuse></material>
+        </visual>
+        <visual name="connector_step">
+          <pose>-0.105 0 -0.0465 0 0 0</pose>
+          <geometry><box><size>0.10 0.12 0.012</size></box></geometry>
+          <material><diffuse>0.82 0.82 0.78 1</diffuse></material>
+        </visual>
+        <visual name="left_contact">
+          <pose>-0.105 0.040 -0.039 0 0 0</pose>
+          <geometry><box><size>0.020 0.014 0.003</size></box></geometry>
+          <material><diffuse>0.8 0.6 0.1 1</diffuse></material>
+        </visual>
+        <visual name="right_contact">
+          <pose>-0.105 -0.040 -0.039 0 0 0</pose>
+          <geometry><box><size>0.020 0.014 0.003</size></box></geometry>
+          <material><diffuse>0.8 0.6 0.1 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+  </world>
+</sdf>

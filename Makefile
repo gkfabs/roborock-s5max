@@ -12,8 +12,17 @@ ROBOT_DESCRIPTION_REPO ?= $(CURDIR)
 DEMO_SECONDS ?= 1800
 MAP_DIR ?= $(HOME)/.local/share/roborock-s5max/maps
 NAME ?=
+SIM_SCENARIO ?= centered
+SIM_LIDAR_PROFILE ?= realistic
+SIM_LIDAR_GEOMETRY_OUTAGE_START ?= 0.0
+SIM_LIDAR_GEOMETRY_OUTAGE_DURATION ?= 0.0
+SIM_LIDAR_GEOMETRY_OUTAGE_STATE ?=
+SIM_LIDAR_GEOMETRY_OUTAGE_STATE_DELAY ?= 0.25
+SIM_LIDAR_OUTAGE_DURATION ?= 2.0
+SIM_LIDAR_OUTAGE_STATES ?= INITIAL_PERCEPTION CONTROLLING WAIT_FOR_CHARGE
+SIM_SCENARIOS ?= centered lateral-offset heading-error beacon-loss missed-contact delayed-charging dock-undock-cycle
 
-.PHONY: help valetudo sangamio teleop map navigate coverage rviz dock-signals dock-signals-undocked redock-test dock-calibrate back2dock stop safety-reset ros-image ros-build
+.PHONY: help valetudo sangamio teleop map navigate coverage rviz dock-signals dock-signals-undocked redock-test dock-calibrate back2dock dock-sim dock-sim-headless dock-sim-matrix dock-sim-lidar-outage-matrix stop safety-reset ros-image ros-build
 
 help:
 	@echo "make valetudo  - stop the ROS session and restore the stock robot software"
@@ -28,6 +37,10 @@ help:
 	@echo "make redock-test - undock, make a bounded final dock approach, and confirm charging"
 	@echo "make dock-calibrate NAME=<name> - save the map staging pose and redock"
 	@echo "make back2dock NAME=<name> - navigate to the saved staging pose and redock"
+	@echo "make dock-sim - run OpenNav Docking with the Gazebo window"
+	@echo "make dock-sim-headless - run OpenNav Docking without the Gazebo window"
+	@echo "make dock-sim-matrix - run every OpenNav Docking scenario"
+	@echo "make dock-sim-lidar-outage-matrix - test LiDAR loss during OpenNav states"
 	@echo "make stop      - stop wheels and cleaning actuators without a reboot"
 	@echo "make safety-reset - release a cleared physical safety stop"
 
@@ -57,10 +70,36 @@ ros-build: ros-image
 		'source /opt/ros/jazzy/setup.bash && colcon build \
 		--base-paths /ws/src /opt/oomwoo-ros2-tools/src \
 		--packages-select vacuum_ros2_bridge roborock_s5max \
-		oomwoo_bringup oomwoo_clean oomwoo_clean_ui oomwoo_coverage \
-		oomwoo_dock oomwoo_localization oomwoo_localization_msgs oomwoo_msgs \
-		oomwoo_sim_support \
+		oomwoo_clean oomwoo_clean_ui oomwoo_coverage \
+		oomwoo_localization oomwoo_localization_msgs oomwoo_msgs \
 		--symlink-install'
+
+dock-sim: ros-build
+	@ROS_IMAGE="$(ROS_IMAGE)" ROS_WORKSPACE="$(ROS_WORKSPACE)" \
+		BRIDGE_REPO="$(BRIDGE_REPO)" \
+		ROBOT_DESCRIPTION_REPO="$(ROBOT_DESCRIPTION_REPO)" \
+		./scripts/run-opennav-dock-sim.sh
+
+dock-sim-headless: ros-build
+	@ROS_IMAGE="$(ROS_IMAGE)" ROS_WORKSPACE="$(ROS_WORKSPACE)" \
+		BRIDGE_REPO="$(BRIDGE_REPO)" \
+		ROBOT_DESCRIPTION_REPO="$(ROBOT_DESCRIPTION_REPO)" \
+		SIM_GUI=0 ./scripts/run-opennav-dock-sim.sh
+
+dock-sim-matrix: ros-build
+	@ROS_IMAGE="$(ROS_IMAGE)" ROS_WORKSPACE="$(ROS_WORKSPACE)" \
+		BRIDGE_REPO="$(BRIDGE_REPO)" \
+		ROBOT_DESCRIPTION_REPO="$(ROBOT_DESCRIPTION_REPO)" \
+		SIM_SCENARIOS="$(SIM_SCENARIOS)" \
+		./scripts/run-dock-sim-matrix.sh
+
+dock-sim-lidar-outage-matrix: ros-build
+	@ROS_IMAGE="$(ROS_IMAGE)" ROS_WORKSPACE="$(ROS_WORKSPACE)" \
+		BRIDGE_REPO="$(BRIDGE_REPO)" \
+		ROBOT_DESCRIPTION_REPO="$(ROBOT_DESCRIPTION_REPO)" \
+		SIM_LIDAR_OUTAGE_STATES="$(SIM_LIDAR_OUTAGE_STATES)" \
+		SIM_LIDAR_GEOMETRY_OUTAGE_DURATION="$(SIM_LIDAR_OUTAGE_DURATION)" \
+		./scripts/run-dock-lidar-outage-matrix.sh
 
 rviz: ros-build
 	@ROBOT="$(ROBOT)" ROBOT_IP="$(ROBOT_IP)" ROS_IMAGE="$(ROS_IMAGE)" \

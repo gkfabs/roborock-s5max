@@ -1,0 +1,42 @@
+diff --git a/src/oomwoo_msgs/CMakeLists.txt b/src/oomwoo_msgs/CMakeLists.txt
+--- a/src/oomwoo_msgs/CMakeLists.txt
++++ b/src/oomwoo_msgs/CMakeLists.txt
+@@ -8,6 +8,7 @@ find_package(geometry_msgs REQUIRED)
+ 
+ rosidl_generate_interfaces(${PROJECT_NAME}
+   "msg/BumpEvent.msg"
++  "msg/DockSignal.msg"
+   DEPENDENCIES std_msgs geometry_msgs
+ )
+diff --git a/src/oomwoo_msgs/msg/DockSignal.msg b/src/oomwoo_msgs/msg/DockSignal.msg
+new file mode 100644
+--- /dev/null
++++ b/src/oomwoo_msgs/msg/DockSignal.msg
+@@ -0,0 +1,28 @@
++# A dock beacon observation from two receivers.
++#
++# The adapter keeps the source masks so later controllers can use signal
++# changes without changing the hardware bridge.
++
++std_msgs/Header header
++
++bool visible
++# bearing_rad is NaN when visible is false.
++float32 bearing_rad
++# confidence is the active receiver count divided by two.
++float32 confidence
++
++uint8 left_mask
++uint8 right_mask
++
++bool far_left
++bool far_right
++bool close_left
++bool close_right
++bool center
++
++uint8 FAR_LEFT_BIT=1
++uint8 FAR_RIGHT_BIT=2
++uint8 CLOSE_LEFT_BIT=4
++uint8 CLOSE_RIGHT_BIT=8
++uint8 CENTER_BIT=16
