@@ -12,6 +12,7 @@ safety_stop_pid=""
 estimate_recorder_pid=""
 pending_path="/maps/.${MAP_NAME}.dock.json.pending"
 stage_path="/maps/${MAP_NAME}.dock.json"
+dock_database_path=""
 
 set_lidar()
 {
@@ -29,50 +30,6 @@ set_lidar()
     fi
     printf '%s\n' "$response" | grep -Eq \
         'success[=:][[:space:]]*(True|true)'
-}
-
-start_lifecycle_group()
-{
-    local manager="$1"
-    local node="$2"
-    local response
-
-    if timeout 2 ros2 lifecycle get "/${node}" 2>/dev/null | \
-            grep -q '^active '; then
-        return 0
-    fi
-
-    for _ in $(seq 1 30); do
-        if ros2 service type "/${manager}/manage_nodes" 2>/dev/null | \
-                grep -q '^nav2_msgs/srv/ManageLifecycleNodes$'; then
-            break
-        fi
-        if ! kill -0 "$launch_pid" 2>/dev/null; then
-            wait "$launch_pid"
-        fi
-        sleep 1
-    done
-    if ! ros2 service type "/${manager}/manage_nodes" 2>/dev/null | \
-            grep -q '^nav2_msgs/srv/ManageLifecycleNodes$'; then
-        return 1
-    fi
-
-    response="$(
-        timeout 15 ros2 service call "/${manager}/manage_nodes" \
-            nav2_msgs/srv/ManageLifecycleNodes '{command: 0}' 2>&1
-    )" || {
-        printf '%s\n' "$response" >&2
-        return 1
-    }
-    for _ in $(seq 1 30); do
-        if timeout 2 ros2 lifecycle get "/${node}" 2>/dev/null | \
-                grep -q '^active '; then
-            return 0
-        fi
-        sleep 1
-    done
-    printf '%s\n' "$response" >&2
-    return 1
 }
 
 stop_process()
@@ -118,10 +75,19 @@ cleanup()
 
 trap cleanup EXIT INT TERM
 
+if [ "$DOCK_MODE" = return ]; then
+    dock_database_path="/tmp/${MAP_NAME}.dock-database.yaml"
+    ros2 run roborock_s5max generate_dock_database.py \
+        --input "$stage_path" \
+        --map-name "$MAP_NAME" \
+        --output "$dock_database_path"
+fi
+
 ros2 launch roborock_s5max navigation.launch.py \
     robot_ip:="$ROBOT_IP" \
     posegraph_path:="/maps/${MAP_NAME}_serial" \
     start_pose_path:="$stage_path" \
+    dock_database_path:="$dock_database_path" \
     autostart:=false &
 launch_pid=$!
 
@@ -183,11 +149,23 @@ echo "Make sure that the LiDAR scan aligns with the saved map."
 echo "If the pose is wrong, use 2D Pose Estimate."
 
 echo "Starting Nav2 after localization became ready."
-if ! start_lifecycle_group lifecycle_manager_navigation controller_server; then
+echo "This script owns lifecycle startup. Do not use RViz Startup."
+if ! ros2 run roborock_s5max lifecycle_start.py \
+        --manager lifecycle_manager_navigation \
+        --node controller_server \
+        --node smoother_server \
+        --node planner_server \
+        --node behavior_server \
+        --node bt_navigator \
+        --node collision_monitor \
+        --timeout 30; then
     echo "ERROR: Nav2 did not enter the active lifecycle state." >&2
     exit 1
 fi
-if ! start_lifecycle_group lifecycle_manager_docking docking_server; then
+if ! ros2 run roborock_s5max lifecycle_start.py \
+        --manager lifecycle_manager_docking \
+        --node docking_server \
+        --timeout 30; then
     echo "ERROR: The docking server did not enter the active lifecycle state." >&2
     exit 1
 fi

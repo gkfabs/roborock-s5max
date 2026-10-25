@@ -9,9 +9,9 @@ from launch.actions import (
     RegisterEventHandler,
     TimerAction,
 )
+from launch.conditions import IfCondition
 from launch.event_handlers import OnProcessExit
 from launch.events import Shutdown
-from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import Command, LaunchConfiguration
 from launch_ros.actions import Node
@@ -33,6 +33,8 @@ def generate_launch_description():
     scenario = LaunchConfiguration('scenario')
     result_path = LaunchConfiguration('result_path')
     docking_params = str(package_path / 'config' / 'docking.yaml')
+    dock_database = str(
+        package_path / 'config' / 'dock_sim_database.yaml')
     robot_description = ParameterValue(
         Command(['xacro ', str(model_path)]),
         value_type=str,
@@ -127,6 +129,7 @@ def generate_launch_description():
             docking_params,
             {
                 'use_sim_time': True,
+                'dock_database': dock_database,
                 'controller.use_collision_detection': False,
                 's5max.external_detection_translation_y': 0.0,
             },
@@ -167,10 +170,7 @@ def generate_launch_description():
         executable='dock_robot.py',
         output='screen',
         arguments=[
-            '--dock-x', '-0.0365',
-            '--dock-y', '0.0',
-            '--dock-yaw', '0.0',
-            '--dock-frame', 'odom',
+            '--dock-id', 'home_dock',
             '--skip-staging',
             '--server-timeout', '45',
             '--operation-timeout', '90',

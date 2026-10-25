@@ -74,13 +74,41 @@ def parse_bool(value):
     raise ValueError(f'Invalid Boolean value: {value}')
 
 
+def make_dock_goal(
+        dock_id, pose, frame, navigate_to_staging, staging_timeout, stamp):
+    goal = DockRobot.Goal()
+    goal.navigate_to_staging_pose = bool(navigate_to_staging)
+    goal.max_staging_time = float(staging_timeout)
+    if dock_id:
+        goal.use_dock_id = True
+        goal.dock_id = str(dock_id)
+        return goal
+
+    goal.use_dock_id = False
+    goal.dock_type = 's5max'
+    goal.dock_pose = PoseStamped()
+    goal.dock_pose.header.frame_id = frame
+    goal.dock_pose.header.stamp = stamp
+    goal.dock_pose.pose.position.x = pose[0]
+    goal.dock_pose.pose.position.y = pose[1]
+    qx, qy, qz, qw = quaternion_from_yaw(pose[2])
+    goal.dock_pose.pose.orientation.x = qx
+    goal.dock_pose.pose.orientation.y = qy
+    goal.dock_pose.pose.orientation.z = qz
+    goal.dock_pose.pose.orientation.w = qw
+    return goal
+
+
 class DockRobotClient(Node):
-    def __init__(self, pose, frame, navigate_to_staging, staging_timeout):
+    def __init__(
+            self, pose, frame, navigate_to_staging, staging_timeout,
+            dock_id=None):
         super().__init__('s5max_dock_robot_client')
         self.pose = pose
         self.frame = frame
         self.navigate_to_staging = navigate_to_staging
         self.staging_timeout = staging_timeout
+        self.dock_id = dock_id
         self.client = ActionClient(self, DockRobot, '/dock_robot')
         self.undock_client = ActionClient(self, UndockRobot, '/undock_robot')
         self.lifecycle_client = self.create_client(
@@ -239,21 +267,14 @@ class DockRobotClient(Node):
             self.get_logger().info(
                 'A detected dock pose is available in frame %s.'
                 % self.detected_pose.header.frame_id)
-        goal = DockRobot.Goal()
-        goal.use_dock_id = False
-        goal.dock_type = 's5max'
-        goal.navigate_to_staging_pose = self.navigate_to_staging
-        goal.max_staging_time = float(self.staging_timeout)
-        goal.dock_pose = PoseStamped()
-        goal.dock_pose.header.frame_id = self.frame
-        goal.dock_pose.header.stamp = self.get_clock().now().to_msg()
-        goal.dock_pose.pose.position.x = self.pose[0]
-        goal.dock_pose.pose.position.y = self.pose[1]
-        qx, qy, qz, qw = quaternion_from_yaw(self.pose[2])
-        goal.dock_pose.pose.orientation.x = qx
-        goal.dock_pose.pose.orientation.y = qy
-        goal.dock_pose.pose.orientation.z = qz
-        goal.dock_pose.pose.orientation.w = qw
+        goal = make_dock_goal(
+            self.dock_id,
+            self.pose,
+            self.frame,
+            self.navigate_to_staging,
+            self.staging_timeout,
+            self.get_clock().now().to_msg(),
+        )
 
         future = self.client.send_goal_async(goal, feedback_callback=self.feedback)
         rclpy.spin_until_future_complete(self, future, timeout_sec=server_timeout)
@@ -264,8 +285,13 @@ class DockRobotClient(Node):
         if not self.goal_handle.accepted:
             self.get_logger().error('The DockRobot goal was rejected.')
             return False
-        self.get_logger().info(
-            'DockRobot accepted target x=%.3f y=%.3f yaw=%.3f.' % self.pose)
+        if self.dock_id:
+            self.get_logger().info(
+                f'DockRobot accepted dock ID {self.dock_id}.')
+        else:
+            self.get_logger().info(
+                'DockRobot accepted target x=%.3f y=%.3f yaw=%.3f.'
+                % self.pose)
         return True
 
     def wait(self, operation_timeout, cancel_timeout=5.0):
@@ -339,6 +365,7 @@ def main(args=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('--path')
     parser.add_argument('--map-name')
+    parser.add_argument('--dock-id')
     parser.add_argument('--dock-offset', type=float, default=0.215)
     parser.add_argument('--dock-x', type=float)
     parser.add_argument('--dock-y', type=float)
@@ -356,7 +383,9 @@ def main(args=None):
 
     try:
         direct = (options.dock_x, options.dock_y, options.dock_yaw)
-        if all(value is not None for value in direct):
+        if options.dock_id:
+            pose = None
+        elif all(value is not None for value in direct):
             pose = direct
         elif options.path and options.map_name:
             pose = read_dock_pose(
@@ -374,6 +403,7 @@ def main(args=None):
         frame=options.dock_frame,
         navigate_to_staging=not options.skip_staging,
         staging_timeout=options.staging_timeout,
+        dock_id=options.dock_id,
     )
     dock_success = False
     undock_success = None
@@ -410,6 +440,7 @@ def main(args=None):
                 'dock_success': dock_success,
                 'undock_success': undock_success,
                 'last_state': node.last_feedback_state,
+                'dock_id': options.dock_id,
             }, target)
             target.write('\n')
     raise SystemExit(0 if success else 1)

@@ -109,4 +109,9 @@ if ! grep -q '"success": true' "$result_path"; then
     fi
     exit 1
 fi
+if ! grep -q '"dock_id": "home_dock"' "$result_path"; then
+    echo "ERROR: The $SIM_SCENARIO simulation did not use home_dock." >&2
+    sed -n '1p' "$result_path" >&2
+    exit 1
+fi
 echo "PASS: OpenNav Docking completed the $SIM_SCENARIO simulation."

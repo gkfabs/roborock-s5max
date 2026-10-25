@@ -2,7 +2,7 @@ Panels:
   - Class: rviz_common/Displays
     Name: Displays
   - Class: nav2_rviz_plugins/Navigation 2
-    Name: Navigation 2
+    Name: Navigation 2 - DO NOT USE STARTUP
   - Class: nav2_rviz_plugins/Docking
     Name: Docking
 Visualization Manager:

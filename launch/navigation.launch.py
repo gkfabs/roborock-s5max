@@ -4,8 +4,6 @@ import json
 import os
 import tempfile
 
-import yaml
-
 from ament_index_python.packages import get_package_share_path
 from launch import LaunchDescription
 from launch.actions import (
@@ -17,6 +15,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
+import yaml
 
 
 def make_localization(context, package_path, slam_launch, posegraph_path,
@@ -78,6 +77,7 @@ def generate_launch_description():
     start_pose_path = LaunchConfiguration('start_pose_path')
     use_sim_time = LaunchConfiguration('use_sim_time')
     autostart = LaunchConfiguration('autostart')
+    dock_database_path = LaunchConfiguration('dock_database_path')
 
     navigation_params = str(package_path / 'config' / 'navigation.yaml')
     docking_params = str(package_path / 'config' / 'docking.yaml')
@@ -159,7 +159,16 @@ def generate_launch_description():
         executable='opennav_docking',
         name='docking_server',
         output='screen',
-        parameters=[docking_params, {'use_sim_time': use_sim_time}],
+        parameters=[
+            docking_params,
+            {
+                'use_sim_time': use_sim_time,
+                'dock_database': ParameterValue(
+                    dock_database_path,
+                    value_type=str,
+                ),
+            },
+        ],
         remappings=(
             transform_remappings
             + [('cmd_vel', 'cmd_vel_nav_raw')]
@@ -238,6 +247,11 @@ def generate_launch_description():
             default_value='true',
             choices=['true', 'false'],
             description='Activate the navigation and docking servers at launch.',
+        ),
+        DeclareLaunchArgument(
+            'dock_database_path',
+            default_value='',
+            description='Generated OpenNav dock database YAML path.',
         ),
         bringup,
         localization,

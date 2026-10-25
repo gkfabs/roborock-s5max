@@ -10,6 +10,7 @@ docking_server:
     dock_backwards: false
     dock_prestaging_tolerance: 0.10
     dock_plugins: [s5max]
+    dock_database: ""
 
     s5max:
       plugin: roborock_s5max::S5MaxChargingDock

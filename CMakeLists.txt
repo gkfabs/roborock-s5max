@@ -65,6 +65,8 @@ install(
     scripts/cancel_docking.py
     scripts/dock_pose_estimator.py
     scripts/dock_robot.py
+    scripts/generate_dock_database.py
+    scripts/lifecycle_start.py
     scripts/dock_scan_fault_adapter.py
     scripts/dock_sim_adapter.py
     scripts/dock_stage.py
@@ -102,6 +104,14 @@ if(BUILD_TESTING)
   ament_add_pytest_test(
     cancel_docking_test
     test/test_cancel_docking.py
+  )
+  ament_add_pytest_test(
+    lifecycle_start_test
+    test/test_lifecycle_start.py
+  )
+  ament_add_pytest_test(
+    generate_dock_database_test
+    test/test_generate_dock_database.py
   )
   ament_add_pytest_test(
     dock_sim_adapter_test

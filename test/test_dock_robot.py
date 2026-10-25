@@ -77,6 +77,41 @@ def test_parse_bool_rejects_unknown_values():
         MODULE.parse_bool('yes')
 
 
+def test_dock_goal_uses_home_dock_id_without_a_pose():
+    stamp = SimpleNamespace()
+
+    goal = MODULE.make_dock_goal(
+        'home_dock',
+        None,
+        'map',
+        True,
+        300.0,
+        stamp,
+    )
+
+    assert goal.use_dock_id
+    assert goal.dock_id == 'home_dock'
+    assert goal.navigate_to_staging_pose
+
+
+def test_pose_goal_remains_available_for_calibration():
+    stamp = MODULE.PoseStamped().header.stamp
+
+    goal = MODULE.make_dock_goal(
+        None,
+        (1.0, 2.0, 0.3),
+        'map',
+        False,
+        30.0,
+        stamp,
+    )
+
+    assert not goal.use_dock_id
+    assert goal.dock_type == 's5max'
+    assert goal.dock_pose.header.frame_id == 'map'
+    assert goal.dock_pose.pose.position.x == 1.0
+
+
 class CompletedFuture:
     def __init__(self, result):
         self._result = result
