@@ -13,21 +13,20 @@ sys.modules[SPEC.name] = MODULE
 SPEC.loader.exec_module(MODULE)
 
 
-def decode(left_mask, right_mask):
-    return MODULE.decode_beacon(left_mask, right_mask, math.atan2(0.30, 0.60))
+def decode(front_mask, right_mask):
+    return MODULE.decode_beacon(front_mask, right_mask, math.atan2(0.30, 0.60))
 
 
 def test_no_beacon_is_not_visible():
     assert decode(0x00, 0x00) == (False, None)
 
 
-def test_centered_far_and_close_captures_have_zero_bearing():
-    assert decode(0x12, 0x12) == (True, 0.0)
-    assert decode(0x14, 0x18) == (True, 0.0)
+def test_centered_physical_capture_has_zero_bearing():
+    assert decode(0x15, 0x18) == (True, 0.0)
 
 
-def test_left_receiver_only_places_beacon_to_robot_left():
-    visible, bearing = decode(0x1A, 0x00)
+def test_front_left_guidance_pattern_places_beacon_to_robot_left():
+    visible, bearing = decode(0x1A, 0x18)
     assert visible
     assert bearing > 0.0
 
@@ -41,7 +40,7 @@ def test_right_receiver_only_places_beacon_to_robot_right():
 def test_rich_signal_preserves_all_five_classes_and_masks():
     signal = MODULE.decode_signal(0x15, 0x1A, 0.5)
 
-    assert signal.left_mask == 0x15
+    assert signal.front_mask == 0x15
     assert signal.right_mask == 0x1A
     assert signal.visible
     assert signal.bearing == 0.0
@@ -69,7 +68,7 @@ def test_rich_signal_reports_one_receiver_as_half_confidence():
 def test_rich_signal_removes_bits_outside_the_five_signal_classes():
     signal = MODULE.decode_signal(0xE0, 0x80, 0.5)
 
-    assert signal.left_mask == 0
+    assert signal.front_mask == 0
     assert signal.right_mask == 0
     assert not signal.visible
     assert signal.bearing is None

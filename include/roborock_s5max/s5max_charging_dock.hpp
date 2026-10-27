@@ -46,9 +46,12 @@ private:
   bool is_docked_{false};
   bool is_charging_{false};
   bool charger_target_{false};
+  bool charger_request_target_{false};
   bool charger_request_active_{false};
   bool left_bumper_{false};
   bool right_bumper_{false};
+  bool bumper_contact_available_{false};
+  bool dock_contact_candidate_{false};
   bool contact_reported_{false};
   double status_timeout_sec_{0.5};
   int charger_speed_{1};

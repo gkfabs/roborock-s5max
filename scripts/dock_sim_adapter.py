@@ -5,7 +5,6 @@ import math
 import rclpy
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
-from oomwoo_msgs.msg import DockSignal
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
@@ -31,32 +30,66 @@ def yaw_from_odometry(message):
     )
 
 
-def simulated_signal(x, y, yaw, beacon_x, beacon_y):
+def receiver_sees_beacon(
+        x, y, yaw, beacon_x, beacon_y,
+        receiver_x, receiver_y, receiver_yaw,
+        half_fov, maximum_range):
+    cosine = math.cos(yaw)
+    sine = math.sin(yaw)
+    sensor_x = x + receiver_x * cosine - receiver_y * sine
+    sensor_y = y + receiver_x * sine + receiver_y * cosine
+    dx = float(beacon_x) - sensor_x
+    dy = float(beacon_y) - sensor_y
+    bearing = wrap_angle(
+        math.atan2(dy, dx) - float(yaw) - float(receiver_yaw))
+    return math.hypot(dx, dy) <= maximum_range and abs(bearing) <= half_fov
+
+
+def simulated_signal(
+        x, y, yaw, beacon_x, beacon_y,
+        front_receiver_x=0.174, front_receiver_y=0.0,
+        front_receiver_yaw=0.0, front_receiver_half_fov=0.26,
+        right_receiver_x=0.124, right_receiver_y=-0.124,
+        right_receiver_yaw=-math.pi / 4.0,
+        right_receiver_half_fov=1.75, receiver_range=1.20):
     dx = float(beacon_x) - float(x)
     dy = float(beacon_y) - float(y)
     distance = math.hypot(dx, dy)
     sight_bearing = wrap_angle(math.atan2(dy, dx) - float(yaw))
-    visible = distance <= 1.2 and abs(sight_bearing) <= 0.9
-    if not visible:
+    visible = distance <= receiver_range and abs(sight_bearing) <= 0.9
+    front_visible = visible and receiver_sees_beacon(
+        x, y, yaw, beacon_x, beacon_y,
+        front_receiver_x, front_receiver_y, front_receiver_yaw,
+        front_receiver_half_fov, receiver_range)
+    right_visible = visible and receiver_sees_beacon(
+        x, y, yaw, beacon_x, beacon_y,
+        right_receiver_x, right_receiver_y, right_receiver_yaw,
+        right_receiver_half_fov, receiver_range)
+    if not front_visible and not right_visible:
         return 0, 0, None
     forward = dx
     lateral = dy
     heading_error = wrap_angle(-float(yaw))
     guidance = wrap_angle(
         heading_error + math.atan2(lateral, max(0.40, forward)))
-    close_centered = (
-        forward <= 0.45
-        and abs(lateral) <= 0.03
-        and abs(heading_error) <= 0.10
-    )
-    if close_centered:
-        return 0x14, 0x18, 0.0
     sector_angle = math.atan2(0.30, 0.60)
     if guidance > 0.05:
-        return 0x15, 0x00, sector_angle
+        return (
+            0x1A if front_visible else 0,
+            0x18 if right_visible else 0,
+            sector_angle,
+        )
     if guidance < -0.05:
-        return 0x00, 0x1A, -sector_angle
-    return 0x12, 0x12, 0.0
+        return (
+            0x15 if front_visible else 0,
+            0x15 if right_visible else 0,
+            -sector_angle,
+        )
+    return (
+        0x15 if front_visible else 0,
+        0x18 if right_visible else 0,
+        0.0,
+    )
 
 
 def simulated_contact(
@@ -86,7 +119,7 @@ def scenario_contact(scenario, retry_seen, dock_state, bumper, contact):
         return contact
     if not retry_seen:
         return False
-    return contact or (dock_state == 'WAIT_FOR_CHARGE' and bumper)
+    return contact
 
 
 def world_pose(x, y, yaw, origin_x, origin_y, origin_yaw):
@@ -102,11 +135,20 @@ def world_pose(x, y, yaw, origin_x, origin_y, origin_yaw):
 class DockSimulationAdapter(Node):
     def __init__(self):
         super().__init__('s5max_dock_sim_adapter')
-        self.declare_parameter('beacon_x', 0.139)
+        self.declare_parameter('beacon_x', 0.123)
         self.declare_parameter('beacon_y', 0.0)
-        self.declare_parameter('dock_center_x', -0.0365)
+        self.declare_parameter('front_receiver_x', 0.174)
+        self.declare_parameter('front_receiver_y', 0.0)
+        self.declare_parameter('front_receiver_yaw', 0.0)
+        self.declare_parameter('front_receiver_half_fov', 0.26)
+        self.declare_parameter('right_receiver_x', 0.124)
+        self.declare_parameter('right_receiver_y', -0.124)
+        self.declare_parameter('right_receiver_yaw', -math.pi / 4.0)
+        self.declare_parameter('right_receiver_half_fov', 1.75)
+        self.declare_parameter('receiver_range', 1.20)
+        self.declare_parameter('dock_center_x', -0.060)
         self.declare_parameter('body_radius', 0.1765)
-        self.declare_parameter('dock_face_x', 0.14)
+        self.declare_parameter('dock_face_x', 0.124)
         self.declare_parameter('contact_lateral_tolerance', 0.015)
         self.declare_parameter('contact_longitudinal_tolerance', 0.015)
         self.declare_parameter('contact_yaw_tolerance', 0.05)
@@ -126,8 +168,6 @@ class DockSimulationAdapter(Node):
         self.last_bumper = False
         self.last_contact = False
 
-        self.signal_pub = self.create_publisher(
-            DockSignal, '/dock_signal', 10)
         self.left_bumper_pub = self.create_publisher(
             Bool, '/bumper/left', 10)
         self.right_bumper_pub = self.create_publisher(
@@ -199,34 +239,27 @@ class DockSimulationAdapter(Node):
             return
         x, y, yaw = self.pose
         now = self.get_clock().now().to_msg()
-        left_mask, right_mask, bearing = simulated_signal(
+        front_mask, right_mask, _ = simulated_signal(
             x,
             y,
             yaw,
             self._parameter('beacon_x'),
             self._parameter('beacon_y'),
+            self._parameter('front_receiver_x'),
+            self._parameter('front_receiver_y'),
+            self._parameter('front_receiver_yaw'),
+            self._parameter('front_receiver_half_fov'),
+            self._parameter('right_receiver_x'),
+            self._parameter('right_receiver_y'),
+            self._parameter('right_receiver_yaw'),
+            self._parameter('right_receiver_half_fov'),
+            self._parameter('receiver_range'),
         )
         if (
                 self.beacon_loss_started_at is not None
                 and self._seconds() - self.beacon_loss_started_at
                 < self._parameter('beacon_loss_duration_sec')):
-            left_mask, right_mask, bearing = 0, 0, None
-        signal = DockSignal()
-        signal.header.stamp = now
-        signal.header.frame_id = 'base_footprint'
-        signal.visible = bearing is not None
-        signal.bearing_rad = float(bearing) if bearing is not None else math.nan
-        signal.confidence = (
-            float(bool(left_mask)) + float(bool(right_mask))) / 2.0
-        signal.left_mask = left_mask
-        signal.right_mask = right_mask
-        combined = left_mask | right_mask
-        signal.far_left = bool(combined & 0x01)
-        signal.far_right = bool(combined & 0x02)
-        signal.close_left = bool(combined & 0x04)
-        signal.close_right = bool(combined & 0x08)
-        signal.center = bool(combined & 0x10)
-        self.signal_pub.publish(signal)
+            front_mask, right_mask = 0, 0
 
         bumper = (
             x + self._parameter('body_radius')
@@ -277,6 +310,8 @@ class DockSimulationAdapter(Node):
         status.battery_voltage = 14.4
         status.battery_percent = 75
         status.is_docked = docked
+        status.dock_ir_front_mask = front_mask
+        status.dock_ir_right_mask = right_mask
         charging_delay = (
             self._parameter('charging_delay_sec')
             if self._scenario() == 'delayed-charging' else 0.0)

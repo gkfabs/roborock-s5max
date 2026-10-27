@@ -95,9 +95,9 @@ def test_terminal_action_status_ends_dock_tracking():
 def test_target_uses_contact_offset_from_dock_face():
     geometry = MODULE.DockGeometry(0.0, 0.50, 0.03, 20, 10)
 
-    target = MODULE.target_in_robot(geometry, 0.04, 0.1765)
+    target = MODULE.target_in_robot(geometry, 0.09, 0.15)
 
-    assert target[0] == pytest.approx(0.2835)
+    assert target[0] == pytest.approx(0.26)
     assert target[1] == pytest.approx(0.03)
     assert target[2] == pytest.approx(0.0)
 
@@ -107,14 +107,22 @@ def test_target_includes_the_scan_origin_transform():
 
     target = MODULE.target_in_robot(
         geometry,
-        0.04,
-        0.1765,
+        0.09,
+        0.15,
         scan_translation_x=0.06,
     )
 
-    assert target[0] == pytest.approx(0.3435)
+    assert target[0] == pytest.approx(0.32)
     assert target[1] == pytest.approx(0.03)
     assert target[2] == pytest.approx(0.0)
+
+
+def test_measured_charging_geometry_places_robot_center_from_wall():
+    wall_to_dock_contact = 0.09
+    robot_center_to_contact = 0.15
+
+    assert wall_to_dock_contact + robot_center_to_contact == pytest.approx(
+        0.24)
 
 
 def test_transform_pose_rotates_robot_relative_target():

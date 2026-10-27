@@ -57,16 +57,26 @@ void S5MaxChargingDock::statusCallback(const VacuumStatus::SharedPtr message)
 
 void S5MaxChargingDock::leftBumperCallback(const std_msgs::msg::Bool::SharedPtr message)
 {
+  const bool contact_was_active = left_bumper_ || right_bumper_;
   left_bumper_ = message->data;
-  if (!left_bumper_ && !right_bumper_) {
+  const bool contact_is_active = left_bumper_ || right_bumper_;
+  if (!contact_was_active && contact_is_active) {
+    bumper_contact_available_ = true;
+  } else if (!contact_is_active) {
+    bumper_contact_available_ = false;
     contact_reported_ = false;
   }
 }
 
 void S5MaxChargingDock::rightBumperCallback(const std_msgs::msg::Bool::SharedPtr message)
 {
+  const bool contact_was_active = left_bumper_ || right_bumper_;
   right_bumper_ = message->data;
-  if (!left_bumper_ && !right_bumper_) {
+  const bool contact_is_active = left_bumper_ || right_bumper_;
+  if (!contact_was_active && contact_is_active) {
+    bumper_contact_available_ = true;
+  } else if (!contact_is_active) {
+    bumper_contact_available_ = false;
     contact_reported_ = false;
   }
 }
@@ -88,9 +98,15 @@ void S5MaxChargingDock::requestCharger(bool enabled)
       const auto response = charger_future_.get();
       charger_request_active_ = false;
       if (!response->success) {
+        dock_contact_candidate_ = false;
         RCLCPP_WARN(node_->get_logger(), "The charger request failed: %s", response->message.c_str());
+      } else {
+        charger_target_ = charger_request_target_;
       }
     }
+    return;
+  }
+  if (charger_target_ == enabled) {
     return;
   }
   if (!charger_client_->service_is_ready()) {
@@ -99,7 +115,10 @@ void S5MaxChargingDock::requestCharger(bool enabled)
   auto request = std::make_shared<SetActuator::Request>();
   request->component = "charger";
   request->speed = enabled ? static_cast<uint8_t>(charger_speed_) : 0;
-  charger_target_ = enabled;
+  charger_request_target_ = enabled;
+  RCLCPP_INFO(
+    node_->get_logger(), "Requesting charger %s after dock contact.",
+    enabled ? "enable" : "disable");
   auto future_and_id = charger_client_->async_send_request(request);
   charger_future_ = future_and_id.future.share();
   charger_request_active_ = true;
@@ -107,7 +126,9 @@ void S5MaxChargingDock::requestCharger(bool enabled)
 
 bool S5MaxChargingDock::isDocked()
 {
-  if (left_bumper_ || right_bumper_) {
+  if ((left_bumper_ || right_bumper_) && bumper_contact_available_) {
+    bumper_contact_available_ = false;
+    dock_contact_candidate_ = true;
     if (!contact_reported_) {
       RCLCPP_WARN(
         node_->get_logger(),
@@ -117,9 +138,14 @@ bool S5MaxChargingDock::isDocked()
     return true;
   }
   if (statusIsFresh() && is_docked_) {
+    dock_contact_candidate_ = true;
     return true;
   }
-  return opennav_docking::SimpleChargingDock::isDocked();
+  const bool geometric_contact = opennav_docking::SimpleChargingDock::isDocked();
+  if (geometric_contact) {
+    dock_contact_candidate_ = true;
+  }
+  return geometric_contact;
 }
 
 bool S5MaxChargingDock::isCharging()
@@ -127,7 +153,7 @@ bool S5MaxChargingDock::isCharging()
   if (statusIsFresh() && is_charging_) {
     return true;
   }
-  if (statusIsFresh() && is_docked_) {
+  if (statusIsFresh() && dock_contact_candidate_) {
     requestCharger(true);
   }
   return false;

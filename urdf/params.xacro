@@ -22,6 +22,15 @@
   <xacro:property name="lidar_diameter" value="0.075"/>
   <xacro:property name="lidar_height" value="0.0165"/>
 
+  <!-- Dock IR receiver poses. Replace these photograph-based positions with
+       direct measurements during physical calibration. -->
+  <xacro:property name="dock_ir_front_x" value="0.174"/>
+  <xacro:property name="dock_ir_front_y" value="0.000"/>
+  <xacro:property name="dock_ir_front_yaw" value="0.000"/>
+  <xacro:property name="dock_ir_right_x" value="0.124"/>
+  <xacro:property name="dock_ir_right_y" value="-0.124"/>
+  <xacro:property name="dock_ir_right_yaw" value="${-pi / 4}"/>
+
   <!-- Approximate component masses sum to the published total mass. -->
   <xacro:property name="body_mass" value="3.15"/>
   <xacro:property name="wheel_mass" value="0.10"/>

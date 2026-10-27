@@ -162,6 +162,10 @@ After successful coverage, the robot sends one Nav2 `DockRobot` action. OpenNav 
 
 The S5 Max dock-pose estimator combines the LiDAR dock face with the infrared beacon. It publishes the final robot pose in the `odom` frame.
 
+The robot has one dock infrared receiver at the front and one on the right side. Gazebo models both receiver poses and their viewing angles. The current poses come from photographs and the three stationary recordings. Replace them with direct measurements when those measurements are available.
+
+The measured charging geometry places the dock contacts 90 mm from the wall and the robot contacts 150 mm from its center. The charged robot center is therefore 240 mm from the wall. The contact pairs are 80 mm apart.
+
 A joystick can override the route when it is connected.
 
 Use `ROBOT_IP`, `ROS_IMAGE`, `BRIDGE_REPO`, `MAP_DIR`, and `DEMO_SECONDS` to change the local environment.

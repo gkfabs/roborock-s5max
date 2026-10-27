@@ -2,4 +2,4 @@ docks:
   home_dock:
     type: s5max
     frame: odom
-    pose: [-0.0365, 0.0, 0.0]
+    pose: [-0.0600, 0.0, 0.0]

@@ -2,7 +2,7 @@ docking_server:
   ros__parameters:
     controller_frequency: 20.0
     initial_perception_timeout: 10.0
-    wait_charge_timeout: 12.0
+    wait_charge_timeout: 3.0
     dock_approach_timeout: 60.0
     max_retries: 2
     base_frame: base_footprint
@@ -10,7 +10,6 @@ docking_server:
     dock_backwards: false
     dock_prestaging_tolerance: 0.10
     dock_plugins: [s5max]
-    dock_database: ""
 
     s5max:
       plugin: roborock_s5max::S5MaxChargingDock
@@ -53,8 +52,8 @@ s5max_dock_pose_estimator:
   ros__parameters:
     scan_topic: /scan
     pose_topic: /detected_dock_pose
-    dock_protrusion_m: 0.040
-    contact_offset_m: 0.1765
+    dock_protrusion_m: 0.090
+    contact_offset_m: 0.150
     scan_translation_x_m: 0.060
     scan_translation_y_m: 0.0
     scan_rotation_yaw_rad: 0.0

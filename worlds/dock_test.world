@@ -63,17 +63,17 @@
 
     <model name="s5max_dock">
       <static>true</static>
-      <pose>0.17 0 0.0525 0 0 0</pose>
+      <pose>0.152 0 0.0525 0 0 0</pose>
       <link name="link">
         <collision name="back_panel">
-          <geometry><box><size>0.06 0.15 0.105</size></box></geometry>
+          <geometry><box><size>0.056 0.15 0.105</size></box></geometry>
         </collision>
         <visual name="tower_body">
-          <geometry><box><size>0.06 0.15 0.105</size></box></geometry>
+          <geometry><box><size>0.056 0.15 0.105</size></box></geometry>
           <material><diffuse>0.88 0.88 0.84 1</diffuse></material>
         </visual>
         <visual name="infrared_window">
-          <pose>-0.031 0 0.005 0 0 0</pose>
+          <pose>-0.029 0 0.005 0 0 0</pose>
           <geometry><box><size>0.004 0.132 0.075</size></box></geometry>
           <material><diffuse>0.03 0.03 0.03 1</diffuse></material>
         </visual>
@@ -83,17 +83,17 @@
           <material><diffuse>0.88 0.88 0.84 1</diffuse></material>
         </visual>
         <visual name="connector_step">
-          <pose>-0.105 0 -0.0465 0 0 0</pose>
+          <pose>-0.062 0 -0.0465 0 0 0</pose>
           <geometry><box><size>0.10 0.12 0.012</size></box></geometry>
           <material><diffuse>0.82 0.82 0.78 1</diffuse></material>
         </visual>
         <visual name="left_contact">
-          <pose>-0.105 0.040 -0.039 0 0 0</pose>
+          <pose>-0.062 0.040 -0.039 0 0 0</pose>
           <geometry><box><size>0.020 0.014 0.003</size></box></geometry>
           <material><diffuse>0.8 0.6 0.1 1</diffuse></material>
         </visual>
         <visual name="right_contact">
-          <pose>-0.105 -0.040 -0.039 0 0 0</pose>
+          <pose>-0.062 -0.040 -0.039 0 0 0</pose>
           <geometry><box><size>0.020 0.014 0.003</size></box></geometry>
           <material><diffuse>0.8 0.6 0.1 1</diffuse></material>
         </visual>

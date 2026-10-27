@@ -11,50 +11,50 @@ MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
 
-def test_far_centered_signal_uses_the_common_far_classes():
-    left, right, bearing = MODULE.simulated_signal(
-        -0.4, 0.0, 0.0, 0.18, 0.0)
+def test_centered_signal_matches_the_physical_capture():
+    front, right, bearing = MODULE.simulated_signal(
+        -0.45, 0.0, 0.0, 0.17, 0.0)
 
-    assert left == 0x12
-    assert right == 0x12
-    assert math.isclose(bearing, 0.0)
-
-
-def test_close_centered_signal_uses_the_measured_close_classes():
-    left, right, bearing = MODULE.simulated_signal(
-        -0.1, 0.0, 0.0, 0.18, 0.0)
-
-    assert left == 0x14
+    assert front == 0x15
     assert right == 0x18
     assert math.isclose(bearing, 0.0)
 
 
-def test_large_left_error_activates_only_left_receiver():
-    left, right, bearing = MODULE.simulated_signal(
-        -0.4, -0.2, 0.0, 0.18, 0.0)
+def test_robot_left_uses_only_the_right_receiver():
+    front, right, bearing = MODULE.simulated_signal(
+        -0.45, 0.15, 0.0, 0.17, 0.0)
 
-    assert left == 0x15
-    assert right == 0
+    assert front == 0
+    assert right == 0x15
+    assert bearing < 0.0
+
+
+def test_robot_right_matches_overlapping_front_and_right_receivers():
+    front, right, bearing = MODULE.simulated_signal(
+        -0.45, -0.10, 0.0, 0.17, 0.0)
+
+    assert front == 0x1A
+    assert right == 0x18
     assert bearing > 0.0
 
 
 def test_contact_requires_lateral_and_heading_alignment():
     assert MODULE.simulated_contact(
-        -0.0365, 0.0, 0.0, -0.0365, 0.015, 0.015, 0.05)
+        -0.060, 0.0, 0.0, -0.060, 0.015, 0.015, 0.05)
     assert not MODULE.simulated_contact(
-        -0.0365, 0.02, 0.0, -0.0365, 0.015, 0.015, 0.05)
+        -0.060, 0.02, 0.0, -0.060, 0.015, 0.015, 0.05)
     assert not MODULE.simulated_contact(
-        -0.0365, 0.0, 0.06, -0.0365, 0.015, 0.015, 0.05)
+        -0.060, 0.0, 0.06, -0.060, 0.015, 0.015, 0.05)
 
 
 def test_contact_remains_latched_during_small_physics_drift():
     assert MODULE.retain_simulated_contact(
-        True, False, -0.075, 0.035, 0.15, -0.0365)
+        True, False, -0.075, 0.035, 0.15, -0.060)
 
 
 def test_contact_releases_after_the_robot_moves_away():
     assert not MODULE.retain_simulated_contact(
-        True, False, -0.12, 0.0, 0.0, -0.0365)
+        True, False, -0.121, 0.0, 0.0, -0.060)
 
 
 def test_missed_contact_blocks_the_first_attempt():
@@ -62,9 +62,14 @@ def test_missed_contact_blocks_the_first_attempt():
         'missed-contact', False, 'WAIT_FOR_CHARGE', True, True)
 
 
-def test_missed_contact_accepts_bumper_contact_after_retry():
-    assert MODULE.scenario_contact(
+def test_missed_contact_does_not_report_bumper_as_electrical_contact():
+    assert not MODULE.scenario_contact(
         'missed-contact', True, 'WAIT_FOR_CHARGE', True, False)
+
+
+def test_missed_contact_accepts_electrical_contact_after_retry():
+    assert MODULE.scenario_contact(
+        'missed-contact', True, 'WAIT_FOR_CHARGE', False, True)
 
 
 def test_regular_scenario_keeps_measured_contact():

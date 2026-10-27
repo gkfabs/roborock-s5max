@@ -101,6 +101,13 @@ def generate_launch_description():
             'scenario': scenario,
         }],
     )
+    beacon_adapter = Node(
+        package='roborock_s5max',
+        executable='dock_beacon_adapter.py',
+        name='s5max_dock_beacon_adapter',
+        output='screen',
+        parameters=[{'use_sim_time': True}],
+    )
     scan_adapter = Node(
         package='roborock_s5max',
         executable='dock_scan_fault_adapter.py',
@@ -216,6 +223,7 @@ def generate_launch_description():
         bridge,
         rviz,
         adapter,
+        beacon_adapter,
         scan_adapter,
         docking_server,
         pose_estimator,

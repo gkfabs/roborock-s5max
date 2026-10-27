@@ -119,4 +119,32 @@
     </collision>
     <xacro:solid_cylinder_inertia mass="${lidar_mass}" radius="${lidar_diameter / 2}" length="${lidar_height}"/>
   </link>
+
+  <joint name="dock_ir_front_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="dock_ir_front_link"/>
+    <origin xyz="${dock_ir_front_x} ${dock_ir_front_y} ${body_height / 2}" rpy="0 0 ${dock_ir_front_yaw}"/>
+  </joint>
+  <link name="dock_ir_front_link">
+    <visual>
+      <geometry>
+        <box size="0.006 0.020 0.012"/>
+      </geometry>
+      <material name="s5max_dark_grey"/>
+    </visual>
+  </link>
+
+  <joint name="dock_ir_right_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="dock_ir_right_link"/>
+    <origin xyz="${dock_ir_right_x} ${dock_ir_right_y} ${body_height / 2}" rpy="0 0 ${dock_ir_right_yaw}"/>
+  </joint>
+  <link name="dock_ir_right_link">
+    <visual>
+      <geometry>
+        <box size="0.006 0.020 0.012"/>
+      </geometry>
+      <material name="s5max_dark_grey"/>
+    </visual>
+  </link>
 </robot>

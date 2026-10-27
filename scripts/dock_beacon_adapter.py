@@ -9,7 +9,7 @@ from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from std_msgs.msg import Bool, Float32
 
-from vacuum_ros2_bridge.msg import DockIr
+from vacuum_ros2_bridge.msg import VacuumStatus
 
 
 BEACON_BITS = 0x1F
@@ -18,11 +18,12 @@ FAR_RIGHT_BIT = 0x02
 CLOSE_LEFT_BIT = 0x04
 CLOSE_RIGHT_BIT = 0x08
 CENTER_BIT = 0x10
+FRONT_LEFT_GUIDANCE_BITS = FAR_RIGHT_BIT | CLOSE_RIGHT_BIT
 DEFAULT_SECTOR_ANGLE_RAD = math.atan2(0.30, 0.60)
 
 
 class DockSignalObservation(NamedTuple):
-    left_mask: int
+    front_mask: int
     right_mask: int
     visible: bool
     bearing: float | None
@@ -34,29 +35,31 @@ class DockSignalObservation(NamedTuple):
     center: bool
 
 
-def decode_beacon(left_mask, right_mask, sector_angle_rad):
-    """Return beacon visibility and its coarse bearing in robot axes."""
-    left_active = bool(left_mask & BEACON_BITS)
-    right_active = bool(right_mask & BEACON_BITS)
-    if not left_active and not right_active:
-        return False, None
-    if left_active and right_active:
-        return True, 0.0
-    if left_active:
-        return True, sector_angle_rad
-    return True, -sector_angle_rad
-
-
-def decode_signal(left_mask, right_mask, sector_angle_rad):
-    """Decode the complete S5 Max dock signal into a shared observation."""
-    left_mask = int(left_mask) & BEACON_BITS
+def decode_beacon(front_mask, right_mask, sector_angle_rad):
+    """Return beacon visibility and its coarse front-right bearing."""
+    front_mask = int(front_mask) & BEACON_BITS
     right_mask = int(right_mask) & BEACON_BITS
-    combined = left_mask | right_mask
+    front_active = bool(front_mask)
+    right_active = bool(right_mask & BEACON_BITS)
+    if not front_active and not right_active:
+        return False, None
+    if front_mask & FRONT_LEFT_GUIDANCE_BITS:
+        return True, sector_angle_rad
+    if not front_active and right_active:
+        return True, -sector_angle_rad
+    return True, 0.0
+
+
+def decode_signal(front_mask, right_mask, sector_angle_rad):
+    """Decode the complete S5 Max dock signal into a shared observation."""
+    front_mask = int(front_mask) & BEACON_BITS
+    right_mask = int(right_mask) & BEACON_BITS
+    combined = front_mask | right_mask
     visible, bearing = decode_beacon(
-        left_mask, right_mask, sector_angle_rad)
-    active_receivers = int(bool(left_mask)) + int(bool(right_mask))
+        front_mask, right_mask, sector_angle_rad)
+    active_receivers = int(bool(front_mask)) + int(bool(right_mask))
     return DockSignalObservation(
-        left_mask=left_mask,
+        front_mask=front_mask,
         right_mask=right_mask,
         visible=visible,
         bearing=bearing,
@@ -84,11 +87,13 @@ class DockBeaconAdapter(Node):
         self.signal_pub = self.create_publisher(
             DockSignal, '/dock_signal', 10)
         self.subscription = self.create_subscription(
-            DockIr, '/dock_ir', self._on_dock_ir, 10)
+            VacuumStatus, '/vacuum_status', self._on_vacuum_status, 10)
 
-    def _on_dock_ir(self, msg):
+    def _on_vacuum_status(self, msg):
         signal = decode_signal(
-            msg.left_mask, msg.right_mask, self.sector_angle_rad)
+            msg.dock_ir_front_mask,
+            msg.dock_ir_right_mask,
+            self.sector_angle_rad)
         self.visible_pub.publish(Bool(data=signal.visible))
         if signal.bearing is not None:
             self.bearing_pub.publish(Float32(data=float(signal.bearing)))
@@ -99,7 +104,7 @@ class DockBeaconAdapter(Node):
         output.bearing_rad = (
             float(signal.bearing) if signal.bearing is not None else math.nan)
         output.confidence = signal.confidence
-        output.left_mask = signal.left_mask
+        output.front_mask = signal.front_mask
         output.right_mask = signal.right_mask
         output.far_left = signal.far_left
         output.far_right = signal.far_right

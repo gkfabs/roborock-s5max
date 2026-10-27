@@ -13,7 +13,7 @@ new file mode 100644
 --- /dev/null
 +++ b/src/oomwoo_msgs/msg/DockSignal.msg
 @@ -0,0 +1,28 @@
-+# A dock beacon observation from two receivers.
++# A dock beacon observation from front and right receivers.
 +#
 +# The adapter keeps the source masks so later controllers can use signal
 +# changes without changing the hardware bridge.
@@ -26,7 +26,7 @@ new file mode 100644
 +# confidence is the active receiver count divided by two.
 +float32 confidence
 +
-+uint8 left_mask
++uint8 front_mask
 +uint8 right_mask
 +
 +bool far_left

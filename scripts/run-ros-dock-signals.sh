@@ -51,8 +51,8 @@ ros2 launch roborock_s5max monitor_robot.launch.py \
 launch_pid=$!
 
 for _ in $(seq 1 30); do
-    if ros2 topic type /dock_ir 2>/dev/null | \
-            grep -q '^vacuum_ros2_bridge/msg/DockIr$'; then
+    if ros2 topic type /vacuum_status 2>/dev/null | \
+            grep -q '^vacuum_ros2_bridge/msg/VacuumStatus$'; then
         break
     fi
     if ! kill -0 "$launch_pid" 2>/dev/null; then
@@ -61,9 +61,9 @@ for _ in $(seq 1 30); do
     sleep 1
 done
 
-if ! ros2 topic type /dock_ir 2>/dev/null | \
-        grep -q '^vacuum_ros2_bridge/msg/DockIr$'; then
-    echo "ERROR: The ROS bridge did not provide the dock infrared topic." >&2
+if ! ros2 topic type /vacuum_status 2>/dev/null | \
+        grep -q '^vacuum_ros2_bridge/msg/VacuumStatus$'; then
+    echo "ERROR: The ROS bridge did not provide the vacuum status topic." >&2
     exit 1
 fi
 
@@ -97,10 +97,10 @@ if [ "$UNDOCK" = 1 ]; then
 fi
 
 echo "Dock infrared data is active."
-echo "The left_mask and right_mask values are hexadecimal receiver histories."
+echo "The dock_ir mask values are hexadecimal receiver histories."
 echo "A nonzero value means that the receiver detected the dock beacon."
 
-if ! timeout 15 ros2 topic echo --once /dock_ir; then
+if ! timeout 15 ros2 topic echo --once /vacuum_status; then
     echo "ERROR: SangamIO did not publish a dock infrared sample." >&2
     exit 1
 fi
